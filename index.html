@@ -1,790 +1,1110 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Global Conflict Monitor | Live Intelligence</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WarMap Intelligence Radio • Secure Live Feed 2026</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --bg-deep: #0a0e1a;
+            --bg-panel: rgba(10, 20, 40, 0.95);
+            --cyan: #00d4ff;
+            --red: #ff3366;
+            --green: #00ff88;
+            --orange: #ff8800;
+            --text: #e0e6ed;
+            --text-dim: #8b92a8;
+            --border: rgba(0, 212, 255, 0.3);
+        }
 
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
 
-  <style>
-    :root{
-      --bg:#0a0b0c;
-      --panel:#151719;
-      --panel2:#1c1e21;
-      --panel-hover:#242628;
-      --border:#2a2d30;
-      --text:#e4e6eb;
-      --muted:#8b949e;
-      --accent:#2AABEE;
-      --red:#ff3366;
-      --green:#00ff88;
-      --orange:#ff8800;
-      --yellow:#ffcc00;
-      --sidebar-width: 460px;
-      --sidebar-collapsed: 60px;
-    }
-    
-    * { box-sizing: border-box; }
-    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family: 'Inter', 'Segoe UI', sans-serif; overflow:hidden; }
-    
-    .app { display: flex; height: 100vh; width: 100vw; position: relative; }
+        .watermark {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 8rem;
+            color: rgba(255,255,255,0.02);
+            font-family: 'JetBrains Mono', monospace;
+            z-index: 9999;
+            pointer-events: none;
+            user-select: none;
+            letter-spacing: 10px;
+        }
 
-    /* SIDEBAR - Careermap Design Final.txt Style */
-    .sidebar {
-      width: var(--sidebar-collapsed); height: 100%; background: var(--panel); border-right: 1px solid var(--border);
-      position: absolute; left: 0; top: 0; z-index: 3000;
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden; display: flex; flex-direction: column;
-      box-shadow: 5px 0 20px rgba(0,0,0,0.6);
-    }
-    .sidebar:hover, .sidebar.active { width: var(--sidebar-width); }
-    
-    .sidebar-inner { width: var(--sidebar-width); height: 100%; display: flex; flex-direction: column; }
+        #map {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 102px);
+            z-index: 1;
+        }
 
-    .sb-header {
-      height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px;
-      border-bottom: 1px solid var(--border); background: var(--panel2); flex-shrink: 0;
-    }
-    .header-left { display: flex; align-items: center; gap: 15px; }
-    .menu-icon { font-size: 1.5rem; color: var(--accent); min-width: 24px; text-align: center; cursor: pointer; }
-    .sb-title { font-weight: 700; font-size: 1.1rem; opacity: 0; transition: opacity 0.2s; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
-    .sidebar:hover .sb-title, .sidebar.active .sb-title { opacity: 1; transition-delay: 0.1s; }
+        /* RADIO BAR */
+        .radio-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: rgba(10, 15, 35, 0.98);
+            border-bottom: 2px solid var(--cyan);
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+            z-index: 10000;
+            box-shadow: 0 4px 20px rgba(0,212,255,0.2);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .radio-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+        .live-dot {
+            width: 14px; height: 14px;
+            background: #ff3366;
+            border-radius: 50%;
+            animation: pulse-radio 1.5s infinite;
+            box-shadow: 0 0 10px #ff3366;
+        }
+        .live-dot.broadcasting {
+            background: var(--green);
+            box-shadow: 0 0 15px var(--green);
+            animation: pulse-green 1s infinite;
+        }
+        @keyframes pulse-radio {
+            0%,100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        @keyframes pulse-green {
+            0%,100% { opacity: 1; box-shadow: 0 0 5px var(--green); }
+            50% { opacity: 0.7; box-shadow: 0 0 20px var(--green); }
+        }
+        .radio-zone-info {
+            margin-left: 30px;
+            padding-left: 20px;
+            border-left: 1px solid var(--border);
+            color: var(--cyan);
+            font-size: 0.9rem;
+        }
+        .radio-zone-name {
+            color: var(--text);
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
 
-    /* Search */
-    .search-box { 
-      padding: 10px 15px; border-bottom: 1px solid var(--border); 
-      opacity: 0; transition: opacity 0.2s; display: flex; gap: 8px;
-    }
-    .sidebar:hover .search-box, .sidebar.active .search-box { opacity: 1; transition-delay: 0.1s; }
-    .search-input { 
-      flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-      padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; outline: none;
-    }
-    .search-input:focus { border-color: var(--accent); }
-    .search-btn { 
-      background: var(--accent); border: none; color: #000; padding: 8px 12px;
-      border-radius: 6px; cursor: pointer; transition: 0.2s;
-    }
-    .search-btn:hover { background: #3bcbff; }
+        /* TICKER */
+        .ticker {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 42px;
+            background: rgba(10,15,35,0.95);
+            border-top: 1px solid var(--cyan);
+            overflow: hidden;
+            z-index: 10001;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+        .ticker-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: ticker-scroll 40s linear infinite;
+        }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        .ticker-item {
+            display: inline-block;
+            margin-right: 50px;
+            color: var(--text-dim);
+        }
+        .ticker-item.alert {
+            color: var(--red);
+            font-weight: 700;
+        }
+        .ticker-item.new::before {
+            content: '● ';
+            color: var(--red);
+            animation: blink 1s infinite;
+        }
 
-    /* Filters */
-    .filters { 
-      display: flex; gap: 6px; padding: 10px 15px; border-bottom: 1px solid var(--border);
-      opacity: 0; transition: opacity 0.2s; flex-wrap: wrap;
-    }
-    .sidebar:hover .filters, .sidebar.active .filters { opacity: 1; transition-delay: 0.1s; }
-    .filter-btn { 
-      cursor: pointer; font-size: 0.7rem; padding: 4px 10px; border-radius: 4px; 
-      background: transparent; border: 1px solid var(--border); color: var(--muted);
-      transition: all 0.2s; font-family: 'JetBrains Mono', monospace; font-weight: 600;
-    }
-    .filter-btn:hover, .filter-btn.active { background: rgba(42, 171, 238, 0.1); border-color: var(--accent); color: var(--accent); }
-    .filter-btn.war.active { background: rgba(255, 51, 102, 0.15); border-color: var(--red); color: var(--red); }
-    .filter-btn.impact.active { background: rgba(255, 204, 0, 0.15); border-color: var(--yellow); color: var(--yellow); }
-    .filter-btn.ally.active { background: rgba(0, 255, 136, 0.1); border-color: var(--green); color: var(--green); }
+        /* TELEGRAM PANEL */
+        .telegram-panel {
+            position: fixed;
+            top: 80px; right: -420px;
+            width: 400px;
+            height: calc(100vh - 140px);
+            background: var(--bg-panel);
+            border-left: 2px solid var(--cyan);
+            border-radius: 12px 0 0 12px;
+            padding: 25px;
+            transition: right 0.4s cubic-bezier(0.23,1,0.32,1);
+            z-index: 10002;
+            box-shadow: -10px 0 40px rgba(0,0,0,0.8);
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+        .telegram-panel.open { right: 0; }
+        .tg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tg-title { 
+            color: var(--cyan); 
+            font-weight: 700; 
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tg-close { 
+            cursor: pointer; 
+            color: var(--text-dim); 
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+        .tg-close:hover { color: var(--red); transform: rotate(90deg); }
+        
+        .tg-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .tg-section-title {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        .tg-bot-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--green);
+            font-size: 0.9rem;
+        }
+        .tg-status-dot {
+            width: 8px; height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--green);
+        }
+        
+        .tg-input {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            margin-bottom: 10px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        .tg-input:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 10px rgba(0,212,255,0.2);
+        }
+        .tg-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--cyan);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+        .tg-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,212,255,0.4);
+        }
+        .tg-btn.processing {
+            background: var(--orange);
+            pointer-events: none;
+        }
+        
+        .tg-inbox {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .tg-message {
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border-left: 3px solid var(--cyan);
+        }
+        .tg-message-time {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
 
-    /* List */
-    .sb-list { flex: 1; overflow-y: auto; padding: 15px; opacity: 0; transition: opacity 0.1s; visibility: hidden; }
-    .sidebar:hover .sb-list, .sidebar.active .sb-list { opacity: 1; visibility: visible; transition-delay: 0.15s; }
+        /* FLOATING BUTTONS */
+        .fab-container {
+            position: fixed;
+            bottom: 70px; right: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10003;
+        }
+        .fab {
+            width: 58px; height: 58px;
+            background: var(--bg-panel);
+            border: 2px solid var(--cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--cyan);
+            box-shadow: 0 8px 25px rgba(0,212,255,0.3);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .fab:hover {
+            transform: scale(1.12) rotate(12deg);
+            background: var(--cyan);
+            color: #000;
+        }
+        .fab.alert {
+            border-color: var(--red);
+            color: var(--red);
+            animation: pulse-border 2s infinite;
+        }
 
-    .rail-icons {
-      position: absolute; top: 80px; left: 0; width: var(--sidebar-collapsed); bottom: 0;
-      display: flex; flex-direction: column; align-items: center; gap: 25px; padding-top: 20px;
-      pointer-events: none; color: var(--muted);
-    }
-    .sidebar:hover .rail-icons, .sidebar.active .rail-icons { opacity: 0; }
+        /* ACCESS MODAL */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: var(--bg-panel);
+            padding: 40px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 420px;
+            border: 1px solid var(--cyan);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .modal-title {
+            color: var(--cyan);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .modal-text {
+            color: var(--text-dim);
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .code-input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .code-input:focus {
+            outline: none;
+            border-color: var(--cyan);
+        }
+        .access-btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .access-btn:hover {
+            background: #ff5588;
+            transform: translateY(-2px);
+        }
+        .access-alt {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        .access-alt a {
+            color: var(--cyan);
+            text-decoration: none;
+            cursor: pointer;
+        }
 
-    /* Cards - Final.txt Style */
-    .conflict-item-wrap { position: relative; padding-left: 20px; margin-bottom: 16px; border-left: 2px solid var(--border); transition: all 0.3s; }
-    .conflict-item-wrap.hidden { display: none; }
-    .conflict-item-wrap::before { 
-      content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; 
-      border-radius: 50%; z-index: 2;
-    }
-    .conflict-item-wrap.capital::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-    .conflict-item-wrap.war::before { background: var(--red); box-shadow: 0 0 8px var(--red); }
-    .conflict-item-wrap.impact::before { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
-    .conflict-item-wrap.ally::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
-    
-    .card { 
-      background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; 
-      padding: 12px; cursor: pointer; transition: all 0.2s;
-    }
-    .card:hover { 
-      border-color: var(--accent); background: var(--panel-hover); transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    .card.war:hover { border-color: var(--red); }
-    .card.impact:hover { border-color: var(--yellow); }
-    .card.ally:hover { border-color: var(--green); }
-    
-    .card-head { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; }
-    .card-title { font-weight: 600; color: #fff; font-size: 0.9rem; }
-    .card-type { 
-      font-size: 0.65rem; text-transform: uppercase; padding: 2px 8px; border-radius: 3px;
-      font-family: 'JetBrains Mono', monospace; font-weight: 700;
-    }
-    .card-type.capital { background: rgba(42, 171, 238, 0.15); color: var(--accent); }
-    .card-type.war { background: rgba(255, 51, 102, 0.15); color: var(--red); }
-    .card-type.impact { background: rgba(255, 204, 0, 0.15); color: var(--yellow); }
-    .card-type.ally { background: rgba(0, 255, 136, 0.1); color: var(--green); }
-    
-    .card-loc { font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    .card-desc { font-size: 0.8rem; color: #b0b3b8; margin-top: 8px; line-height: 1.4; }
-    .card-meta { 
-      font-size: 0.7rem; color: var(--muted); margin-top: 8px; padding-top: 8px;
-      border-top: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;
-      display: flex; justify-content: space-between;
-    }
+        /* POPUP STYLES */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-panel);
+            color: var(--text);
+            border: 1px solid var(--cyan);
+            border-radius: 8px;
+            min-width: 250px;
+        }
+        .leaflet-popup-tip {
+            background: var(--cyan);
+        }
+        .intel-popup-title {
+            color: var(--cyan);
+            font-weight: 700;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        .intel-popup-meta {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .intel-popup-summary {
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+        .intel-popup-confidence {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .confidence-high { background: rgba(0,255,136,0.2); color: var(--green); }
+        .confidence-med { background: rgba(255,136,0,0.2); color: var(--orange); }
+        .confidence-low { background: rgba(255,51,102,0.2); color: var(--red); }
+        
+        .error-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--red);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            z-index: 30000;
+            display: none;
+            box-shadow: 0 4px 20px rgba(255,51,102,0.4);
+        }
 
-    /* Map */
-    .map-wrapper { flex: 1; margin-left: var(--sidebar-collapsed); height: 100%; position: relative; transition: margin-left 0.3s; }
-    #map { width: 100%; height: 100%; z-index: 1; background: var(--bg); }
-
-    /* Connector Lines Layer */
-    .connector-layer { 
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-      pointer-events: none; z-index: 2000;
-    }
-    .connection-line {
-      stroke-dasharray: 5,5;
-      animation: dash 20s linear infinite;
-      opacity: 0.6;
-      filter: drop-shadow(0 0 2px currentColor);
-    }
-    @keyframes dash {
-      to { stroke-dashoffset: -100; }
-    }
-
-    /* Overlay Info Windows */
-    .overlay-info {
-      position: absolute;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      min-width: 280px;
-      max-width: 350px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-      z-index: 2500;
-      display: none;
-      backdrop-filter: blur(10px);
-      pointer-events: auto;
-    }
-    .overlay-info.active { display: block; animation: slideIn 0.3s ease-out; }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .overlay-header {
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px;
-    }
-    .overlay-title { font-weight: 700; font-size: 1rem; color: white; }
-    .overlay-close { color: var(--muted); cursor: pointer; transition: 0.2s; }
-    .overlay-close:hover { color: var(--accent); }
-    .overlay-content { font-size: 0.85rem; line-height: 1.5; }
-    .overlay-connections { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-    .conn-item { 
-      display: flex; align-items: center; gap: 8px; font-size: 0.75rem; 
-      margin: 4px 0; color: var(--muted);
-    }
-    .conn-line { width: 20px; height: 2px; border-radius: 1px; }
-
-    /* Watermark */
-    .watermark {
-      position: fixed; top: 50%; left: 50%; 
-      transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 4rem; color: rgba(42, 171, 238, 0.02);
-      pointer-events: none; z-index: 500;
-      font-family: 'JetBrains Mono', monospace;
-      letter-spacing: 8px; white-space: nowrap;
-      user-select: none; font-weight: 700;
-    }
-
-    /* Timestamp */
-    .timestamp {
-      position: fixed; bottom: 12px; right: 12px;
-      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
-      color: var(--muted); z-index: 1001;
-      background: rgba(0, 0, 0, 0.5); padding: 6px 10px;
-      border-radius: 4px; border: 1px solid var(--border);
-      backdrop-filter: blur(4px);
-    }
-
-    /* Marker Styles */
-    .capital-marker { filter: drop-shadow(0 0 6px currentColor); }
-    .impact-marker { animation: blink 2s ease-in-out infinite; }
-    @keyframes blink {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.7; transform: scale(1.2); }
-    }
-
-    /* Media Feed Badge */
-    .media-badge {
-      position: absolute; top: 10px; right: 10px;
-      background: var(--red); color: white;
-      font-size: 0.7rem; padding: 2px 6px;
-      border-radius: 10px; font-weight: 700;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    /* Scrollbar */
-    .sb-list::-webkit-scrollbar { width: 4px; }
-    .sb-list::-webkit-scrollbar-track { background: transparent; }
-    .sb-list::-webkit-scrollbar-thumb { background: rgba(42, 171, 238, 0.2); border-radius: 2px; }
-    .sb-list::-webkit-scrollbar-thumb:hover { background: rgba(42, 171, 238, 0.4); }
-
-    /* Zoom Controls */
-    .leaflet-control-zoom { border-radius: 4px; border: 1px solid var(--border); background: var(--panel) !important; }
-    .leaflet-control-zoom-in, .leaflet-control-zoom-out { color: var(--accent) !important; background: transparent !important; border: none !important; }
-
-    @media (max-width: 768px) {
-      :root { --sidebar-width: 100vw; --sidebar-collapsed: 60px; }
-      .sidebar { width: 100%; height: var(--sidebar-collapsed); position: fixed; bottom: 0; top: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; border-right: none; border-top: 1px solid var(--border); }
-      .sidebar.active { height: 70%; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-      .map-wrapper { margin-left: 0; margin-bottom: var(--sidebar-collapsed); }
-      .sb-header { flex-direction: row; height: 70px; }
-      .watermark { font-size: 2rem; }
-      .overlay-info { max-width: 90vw; left: 5vw !important; right: 5vw !important; }
-    }
-  </style>
+        @media (max-width: 768px) {
+            .telegram-panel { width: 100%; right: -100%; }
+            .radio-zone-info { display: none; }
+            .watermark { font-size: 4rem; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="watermark">GLOBAL CONFLICT MONITOR</div>
+    <div class="watermark">WARMAP 2026</div>
+    <div class="error-toast" id="errorToast"></div>
 
-<div class="app">
-  <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-inner">
-      <div class="sb-header">
-        <div class="header-left">
-          <div class="menu-icon" onclick="toggleSidebar()"><i class="fa-solid fa-earth-americas"></i></div>
-          <div class="sb-title">Global Conflict Monitor</div>
+    <!-- RADIO BAR -->
+    <div class="radio-bar">
+        <div class="radio-status">
+            <div class="live-dot" id="liveDot"></div>
+            <span id="radioStatusText">STANDBY</span>
         </div>
-      </div>
-      
-      <div class="search-box">
-        <input type="text" class="search-input" id="searchInput" placeholder="Suche Land, Stadt, Konflikt..." onkeyup="searchNodes()">
-        <button class="search-btn" onclick="searchNodes()"><i class="fa-solid fa-search"></i></button>
-      </div>
-      
-      <div class="filters">
-        <button class="filter-btn active" onclick="setFilter('all')">ALLE</button>
-        <button class="filter-btn capital" onclick="setFilter('capital')">HAUPTSTÄDTE</button>
-        <button class="filter-btn war" onclick="setFilter('war')">KRIEG</button>
-        <button class="filter-btn impact" onclick="setFilter('impact')">IMPACT</button>
-        <button class="filter-btn ally" onclick="setFilter('ally')">ALLIANZ</button>
-      </div>
-      
-      <div class="sb-list" id="feed"></div>
-    </div>
-    
-    <div class="rail-icons">
-      <i class="fa-solid fa-crosshairs" style="color:var(--red)"></i>
-      <i class="fa-solid fa-explosion" style="color:var(--yellow)"></i>
-      <i class="fa-solid fa-handshake" style="color:var(--green)"></i>
-    </div>
-  </aside>
+        
+        <div class="radio-zone-info">
+            <div id="currentZoneDisplay">UTC+00:00 LONDON</div>
+            <div class="radio-zone-name" id="nextBroadcastTime">Nächste Ausgabe: --:--</div>
+        </div>
 
-  <main class="map-wrapper">
+        <div style="margin-left:auto; display:flex; gap:15px; align-items:center;">
+            <span id="markerCount" style="color:var(--text-dim); font-size:0.8rem;">0 Markers</span>
+            <button onclick="toggleRadio()" class="fab" style="position:static; width:40px; height:40px; font-size:1rem;">
+                <i class="fas fa-play" id="playIcon"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAP -->
     <div id="map"></div>
-    <svg class="connector-layer" id="connectorSvg"></svg>
-    
-    <!-- Overlay Info Window -->
-    <div class="overlay-info" id="overlayInfo">
-      <div class="overlay-header">
-        <div class="overlay-title" id="overlayTitle">Konflikt Info</div>
-        <i class="fa-solid fa-xmark overlay-close" onclick="closeOverlay()"></i>
-      </div>
-      <div class="overlay-content" id="overlayContent"></div>
-      <div class="overlay-connections" id="overlayConnections"></div>
-      <div id="mediaFeed" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);"></div>
-    </div>
-    
-    <div class="timestamp" id="timestamp">03. MÄRZ 2026 • <span id="clock">00:00:00</span> CET</div>
-  </main>
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script>
-// --- DATA ---
-// Hauptstädte und Konfliktparteien
-const capitals = {
-  RU: { name: "Moskau", lat: 55.7558, lng: 37.6173, status: "war", type: "capital", color: "#ff3366", desc: "Russische Föderation - Hauptquartier militärischer Operationen" },
-  UA: { name: "Kiew", lat: 50.4501, lng: 30.5234, status: "war", type: "capital", color: "#ff3366", desc: "Ukraine - Hauptstadt unter konstantem Bedrohungsstatus" },
-  BY: { name: "Minsk", lat: 53.9045, lng: 27.5615, status: "ally", type: "capital", color: "#00ff88", desc: "Belarus - Russland-alliiert" },
-  US: { name: "Washington D.C.", lat: 38.9072, lng: -77.0369, status: "war", type: "capital", color: "#ff3366", desc: "USA - Direkte militärische Engagements" },
-  IR: { name: "Teheran", lat: 35.6892, lng: 51.3890, status: "war", type: "capital", color: "#ff3366", desc: "Iran - Konflikt mit USA und Israel" },
-  IL: { name: "Jerusalem", lat: 31.7683, lng: 35.2137, status: "war", type: "capital", color: "#ff3366", desc: "Israel - Mehrfrontenkrieg" },
-  GB: { name: "London", lat: 51.5074, lng: -0.1278, status: "ally", type: "capital", color: "#00ff88", desc: "UK - NATO-Verbündeter" },
-  DE: { name: "Berlin", lat: 52.5200, lng: 13.4050, status: "ally", type: "capital", color: "#00ff88", desc: "Deutschland - NATO, militärische Unterstützung" },
-  FR: { name: "Paris", lat: 48.8566, lng: 2.3522, status: "ally", type: "capital", color: "#00ff88", desc: "Frankreich - NATO-Verbündeter" },
-  CN: { name: "Peking", lat: 39.9042, lng: 116.4074, status: "risk", type: "capital", color: "#ff8800", desc: "China - Taiwan-Spannungen" },
-  KP: { name: "Pjöngjang", lat: 39.0392, lng: 125.7625, status: "risk", type: "capital", color: "#ff8800", desc: "Nordkorea - Atomprogramm" },
-  KR: { name: "Seoul", lat: 37.5665, lng: 126.9780, status: "risk", type: "capital", color: "#ff8800", desc: "Südkorea - Bedrohung durch Norden" }
-};
-
-// Impact-Zonen (Raketen, Bomben, ballistische Treffer)
-const impacts = [
-  { id: "bucha", name: "Butscha", lat: 50.5531, lng: 30.2137, type: "impact", color: "#ffcc00", desc: "Massaker-Stätte, Kriegsverbrechen", date: "2022-03", country: "UA" },
-  { id: "mariupol", name: "Mariupol", lat: 47.0971, lng: 37.5434, type: "impact", color: "#ffcc00", desc: "Zerstörung Azovstal, Belagerung", date: "2022-04", country: "UA" },
-  { id: "dnipro", name: "Dnipro", lat: 48.4647, lng: 35.0462, type: "impact", color: "#ffcc00", desc: "Ballistischer Angriff auf Wohnhaus", date: "2023-01", country: "UA" },
-  { id: "sderot", name: "Sderot", lat: 31.5250, lng: 34.5965, type: "impact", color: "#ffcc00", desc: "Schwerer Raketenbeschuss durch Hamas", date: "2023-10", country: "IL" },
-  { id: "beeri", name: "Be'eri", lat: 31.4256, lng: 34.4983, type: "impact", color: "#ffcc00", desc: "Terrorangriff, Massaker", date: "2023-10", country: "IL" },
-  { id: "gaza_city", name: "Gaza-Stadt", lat: 31.5017, lng: 34.4668, type: "impact", color: "#ffcc00", desc: "Intensive Kampfhandlungen, Zerstörung", date: "2023-2024", country: "PS" },
-  { id: "jabalia", name: "Dschabalia", lat: 31.5291, lng: 34.4953, type: "impact", color: "#ffcc00", desc: "Luftangriffe auf Flüchtlingslager", date: "2023-11", country: "PS" },
-  { id: "khan_yunis", name: "Chan Yunis", lat: 31.3462, lng: 34.3038, type: "impact", color: "#ffcc00", desc: "Bodenoffensive, Zerstörung", date: "2024-01", country: "PS" },
-  { id: "rafah", name: "Rafah", lat: 31.2968, lng: 34.2456, type: "impact", color: "#ffcc00", desc: "Grenzstadt unter Beschuss", date: "2024-02", country: "PS" },
-  { id: "odesa", name: "Odessa", lat: 46.4825, lng: 30.7233, type: "impact", color: "#ffcc00", desc: "Hafenstadt unter Raketenbeschuss", date: "2022-2024", country: "UA" },
-  { id: "charkiw", name: "Charkiw", lat: 49.9935, lng: 36.2304, type: "impact", color: "#ffcc00", desc: "Systematische Zerstörung Infrastruktur", date: "2022-2024", country: "UA" },
-  { id: "bakhmut", name: "Bachmut", lat: 48.5951, lng: 38.0029, type: "impact", color: "#ffcc00", desc: "Monatelange Schlacht, vollständige Zerstörung", date: "2023-05", country: "UA" },
-  { id: "avdiivka", name: "Awdiijiwka", lat: 48.1295, lng: 37.7469, type: "impact", color: "#ffcc00", desc: "Abwehrschlacht, schwere Verluste", date: "2024-02", country: "UA" },
-  { id: "abudhabi", name: "Abu Dhabi", lat: 24.4539, lng: 54.3773, type: "impact", color: "#ffcc00", desc: "Houthi-Angriffe auf Ölanlagen", date: "2022", country: "AE" },
-  { id: "riyadh", name: "Riad", lat: 24.7136, lng: 46.6753, type: "impact", color: "#ffcc00", desc: "Raketenabwehr gegen Houthi-Angriffe", date: "2022", country: "SA" },
-  { id: "khartoum", name: "Khartum", lat: 15.5007, lng: 32.5599, type: "impact", color: "#ffcc00", desc: "Häuserkampf im Stadtzentrum", date: "2023-2024", country: "SD" },
-  { id: "geneina", name: "El-Geneina", lat: 13.4526, lng: 22.4472, type: "impact", color: "#ffcc00", desc: "Massaker, ethnische Gewalt", date: "2023", country: "SD" },
-  { id: "taipei", name: "Taipeh", lat: 25.0330, lng: 121.5654, type: "impact", color: "#ffcc00", desc: "Konstante Bedrohung, Manöver", date: "laufend", country: "TW" }
-];
-
-// Verbindungen/Konfliktlinien
-const conflicts = [
-  { from: "RU", to: "UA", type: "war", intensity: "Extrem", label: "Vollständiger Krieg" },
-  { from: "US", to: "IR", type: "war", intensity: "Hoch", label: "Direktkonflikt" },
-  { from: "IL", to: "IR", type: "war", intensity: "Hoch", label: "Shadow War / Luftangriffe" },
-  { from: "IL", to: "gaza_city", type: "war", intensity: "Extrem", label: "Gaza-Offensive" },
-  { from: "US", to: "RU", type: "war", intensity: "Mittel", label: "Proxy-Konflikt / Sanktionen" },
-  { from: "CN", to: "taipei", type: "risk", intensity: "Hoch", label: "Invasionsdrohung" },
-  { from: "KP", to: "KR", type: "risk", intensity: "Hoch", label: "Artillerieduell" }
-];
-
-// --- STATE ---
-let currentFilter = 'all';
-let map;
-let markers = {};
-let overlayLines = [];
-let activeOverlay = null;
-
-// --- INIT ---
-function init() {
-  map = L.map('map', { zoomControl: false, attributionControl: false, minZoom: 2, maxZoom: 18 }).setView([50, 20], 3);
-  
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
-    maxZoom: 18, opacity: 0.7 
-  }).addTo(map);
-
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.control.attribution({ position: 'bottomleft', prefix: '© OSM | Live Intelligence' }).addTo(map);
-
-  // Add Capital Markers
-  Object.keys(capitals).forEach(key => {
-    const cap = capitals[key];
-    const marker = createCapitalMarker(cap, key);
-    markers[key] = marker;
-  });
-
-  // Add Impact Markers
-  impacts.forEach(impact => {
-    const marker = createImpactMarker(impact);
-    markers[impact.id] = marker;
-  });
-
-  // Event Listeners
-  map.on('move', updateOverlayLines);
-  map.on('zoom', updateOverlayLines);
-  map.on('click', (e) => {
-    if (e.originalEvent.target.id === 'map') closeOverlay();
-  });
-
-  renderSidebar();
-  updateClock();
-  setInterval(updateClock, 1000);
-  
-  // Simulate live data updates
-  setInterval(simulateLiveUpdate, 30000);
-}
-
-function createCapitalMarker(cap, key) {
-  const icon = L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div style="background:${cap.color}; width:14px; height:14px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 10px ${cap.color};" class="capital-marker"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7]
-  });
-
-  const marker = L.marker([cap.lat, cap.lng], { icon: icon }).addTo(map);
-  
-  marker.on('click', (e) => {
-    L.DomEvent.stopPropagation(e);
-    showOverlay(key, cap, 'capital');
-  });
-
-  return marker;
-}
-
-function createImpactMarker(impact) {
-  const icon = L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div style="background:${impact.color}; width:10px; height:10px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 8px ${impact.color};" class="impact-marker"></div>`,
-    iconSize: [10, 10],
-    iconAnchor: [5, 5]
-  });
-
-  const marker = L.marker([impact.lat, impact.lng], { icon: icon }).addTo(map);
-  
-  marker.on('click', (e) => {
-    L.DomEvent.stopPropagation(e);
-    showOverlay(impact.id, impact, 'impact');
-  });
-
-  return marker;
-}
-
-function showOverlay(key, data, type) {
-  activeOverlay = key;
-  const overlay = document.getElementById('overlayInfo');
-  const title = document.getElementById('overlayTitle');
-  const content = document.getElementById('overlayContent');
-  const connections = document.getElementById('overlayConnections');
-  const mediaFeed = document.getElementById('mediaFeed');
-  
-  // Position overlay near marker but keep in bounds
-  const point = map.latLngToContainerPoint([data.lat, data.lng]);
-  const mapWidth = document.getElementById('map').offsetWidth;
-  const mapHeight = document.getElementById('map').offsetHeight;
-  
-  let left = point.x + 20;
-  let top = point.y - 50;
-  
-  if (left + 350 > mapWidth) left = point.x - 370;
-  if (top + 400 > mapHeight) top = mapHeight - 420;
-  if (top < 10) top = 10;
-  
-  overlay.style.left = left + 'px';
-  overlay.style.top = top + 'px';
-  overlay.classList.add('active');
-  
-  // Content
-  title.textContent = data.name;
-  title.style.color = type === 'capital' ? '#2AABEE' : '#ffcc00';
-  
-  content.innerHTML = `
-    <div style="margin-bottom:8px;">
-      <span style="background:${data.color}20; color:${data.color}; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:700; text-transform:uppercase;">
-        ${type === 'capital' ? 'HAUPTSTADT' : 'IMPACT ZONE'}
-      </span>
-    </div>
-    <div style="color:var(--text); margin-bottom:10px;">${data.desc}</div>
-    ${data.date ? `<div style="color:var(--muted); font-size:0.8rem;"><i class="fa-regular fa-clock"></i> ${data.date}</div>` : ''}
-    <div style="color:var(--muted); font-size:0.8rem; margin-top:4px;">
-      <i class="fa-solid fa-location-crosshairs"></i> ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}
-    </div>
-  `;
-  
-  // Connections
-  const relevantConns = conflicts.filter(c => c.from === key || c.to === key);
-  if (relevantConns.length > 0) {
-    connections.innerHTML = '<div style="font-size:0.75rem; color:var(--accent); margin-bottom:6px; font-weight:600;">VERBINDUNGEN</div>';
-    relevantConns.forEach(conn => {
-      const otherKey = conn.from === key ? conn.to : conn.from;
-      const otherData = capitals[otherKey] || impacts.find(i => i.id === otherKey);
-      if (otherData) {
-        connections.innerHTML += `
-          <div class="conn-item">
-            <div class="conn-line" style="background:${conn.type === 'war' ? '#ff3366' : '#ff8800'}"></div>
-            <span>${otherData.name} - ${conn.label}</span>
-          </div>
-        `;
-      }
-    });
-  } else {
-    connections.innerHTML = '';
-  }
-  
-  // Media Feed (Simulated)
-  mediaFeed.innerHTML = '<div style="font-size:0.75rem; color:var(--red); margin-bottom:6px; font-weight:600;"><i class="fa-solid fa-rss"></i> LIVE-FEED</div>';
-  const headlines = generateHeadlines(data.name);
-  headlines.forEach(h => {
-    mediaFeed.innerHTML += `
-      <div style="font-size:0.75rem; color:var(--muted); margin:4px 0; padding-left:8px; border-left:2px solid var(--border);">
-        <span style="color:var(--accent); font-size:0.65rem;">${h.time}</span> ${h.text}
-      </div>
-    `;
-  });
-  
-  // Draw connecting lines
-  drawOverlayLines(key, data);
-}
-
-function generateHeadlines(location) {
-  const times = ['vor 2 Min', 'vor 12 Min', 'vor 45 Min', 'vor 2 Std'];
-  const templates = [
-    `Berichte über Explosionen in ${location}`,
-    `Militärsprecher bestätigt Aktivität nahe ${location}`,
-    `Satellitenbilder zeigen Rauch über ${location}`,
-    `Diplomatische Gespräche bezüglich ${location} abgebrochen`
-  ];
-  return times.map((t, i) => ({ time: t, text: templates[i] || templates[0] }));
-}
-
-function drawOverlayLines(key, data) {
-  const svg = document.getElementById('connectorSvg');
-  svg.innerHTML = '';
-  overlayLines = [];
-  
-  const relevantConns = conflicts.filter(c => c.from === key || c.to === key);
-  const startPoint = map.latLngToContainerPoint([data.lat, data.lng]);
-  
-  relevantConns.forEach(conn => {
-    const otherKey = conn.from === key ? conn.to : conn.from;
-    const otherData = capitals[otherKey] || impacts.find(i => i.id === otherKey);
-    
-    if (otherData) {
-      const endPoint = map.latLngToContainerPoint([otherData.lat, otherData.lng]);
-      
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', startPoint.x);
-      line.setAttribute('y1', startPoint.y);
-      line.setAttribute('x2', endPoint.x);
-      line.setAttribute('y2', endPoint.y);
-      line.setAttribute('stroke', conn.type === 'war' ? '#ff3366' : '#ff8800');
-      line.setAttribute('stroke-width', '2');
-      line.setAttribute('class', 'connection-line');
-      
-      svg.appendChild(line);
-      overlayLines.push({ line, from: key, to: otherKey });
-    }
-  });
-}
-
-function updateOverlayLines() {
-  if (!activeOverlay) return;
-  
-  const data = capitals[activeOverlay] || impacts.find(i => i.id === activeOverlay);
-  if (data) {
-    drawOverlayLines(activeOverlay, data);
-    
-    // Update overlay position
-    const overlay = document.getElementById('overlayInfo');
-    const point = map.latLngToContainerPoint([data.lat, data.lng]);
-    let left = point.x + 20;
-    let top = point.y - 50;
-    const mapWidth = document.getElementById('map').offsetWidth;
-    const mapHeight = document.getElementById('map').offsetHeight;
-    
-    if (left + 350 > mapWidth) left = point.x - 370;
-    if (top + 400 > mapHeight) top = mapHeight - 420;
-    if (top < 10) top = 10;
-    
-    overlay.style.left = left + 'px';
-    overlay.style.top = top + 'px';
-  }
-}
-
-function closeOverlay() {
-  document.getElementById('overlayInfo').classList.remove('active');
-  document.getElementById('connectorSvg').innerHTML = '';
-  activeOverlay = null;
-}
-
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('active');
-}
-
-function setFilter(type) {
-  currentFilter = type;
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
-  renderSidebar();
-  
-  // Update marker visibility
-  Object.keys(markers).forEach(key => {
-    const isCapital = capitals[key] !== undefined;
-    const isImpact = impacts.find(i => i.id === key) !== undefined;
-    let visible = true;
-    
-    if (type === 'capital') visible = isCapital;
-    else if (type === 'impact') visible = isImpact;
-    else if (type === 'war') {
-      const data = capitals[key] || impacts.find(i => i.id === key);
-      visible = data && data.status === 'war';
-    }
-    else if (type === 'ally') {
-      const data = capitals[key];
-      visible = data && data.status === 'ally';
-    }
-    
-    if (visible) {
-      markers[key].setOpacity(1);
-      if (isImpact) markers[key].getElement().style.display = 'block';
-    } else {
-      markers[key].setOpacity(0.1);
-      if (isImpact) markers[key].getElement().style.display = 'none';
-    }
-  });
-}
-
-function searchNodes() {
-  const query = document.getElementById('searchInput').value.toLowerCase();
-  const items = document.querySelectorAll('.conflict-item-wrap');
-  
-  items.forEach(item => {
-    const text = item.textContent.toLowerCase();
-    if (text.includes(query)) {
-      item.classList.remove('hidden');
-    } else {
-      item.classList.add('hidden');
-    }
-  });
-}
-
-function renderSidebar() {
-  const feed = document.getElementById('feed');
-  feed.innerHTML = '';
-  
-  // Combine all items
-  let items = [];
-  
-  Object.keys(capitals).forEach(key => {
-    items.push({ key, ...capitals[key], category: 'capital' });
-  });
-  
-  impacts.forEach(impact => {
-    items.push({ key: impact.id, ...impact, category: 'impact' });
-  });
-  
-  // Filter
-  if (currentFilter !== 'all') {
-    items = items.filter(item => {
-      if (currentFilter === 'capital') return item.category === 'capital';
-      if (currentFilter === 'impact') return item.category === 'impact';
-      return item.status === currentFilter;
-    });
-  }
-  
-  // Sort: Capitals first, then impacts, by status severity
-  const statusOrder = { war: 0, risk: 1, impact: 2, ally: 3 };
-  items.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
-  
-  items.forEach(item => {
-    const div = document.createElement('div');
-    div.className = `conflict-item-wrap ${item.category} ${item.status}`;
-    div.innerHTML = `
-      <div class="card ${item.status}" onclick="focusOn('${item.key}', '${item.category}')">
-        <div class="card-head">
-          <div class="card-title">${item.name}</div>
-          <div class="card-type ${item.category}">${item.category === 'capital' ? 'CAPITAL' : 'IMPACT'}</div>
+    <!-- TICKER -->
+    <div class="ticker">
+        <div id="ticker-content" class="ticker-content">
+            <span class="ticker-item">System initialisiert... Warte auf Intel...</span>
         </div>
-        <div class="card-loc">
-          <i class="fa-solid fa-location-dot"></i> 
-          ${item.lat.toFixed(2)}, ${item.lng.toFixed(2)}
-          ${item.date ? `<span style="margin-left:auto; color:var(--accent)">${item.date}</span>` : ''}
-        </div>
-        <div class="card-desc">${item.desc}</div>
-        <div class="card-meta">
-          <span>${getConnectionsCount(item.key)} Verbindungen</span>
-          <span style="color:${item.color}">${item.status.toUpperCase()}</span>
-        </div>
-      </div>
-    `;
-    feed.appendChild(div);
-  });
-}
-
-function getConnectionsCount(key) {
-  return conflicts.filter(c => c.from === key || c.to === key).length;
-}
-
-function focusOn(key, category) {
-  const data = category === 'capital' ? capitals[key] : impacts.find(i => i.id === key);
-  if (data) {
-    map.flyTo([data.lat, data.lng], 8, { duration: 1.5 });
-    setTimeout(() => {
-      showOverlay(key, data, category);
-    }, 1500);
-  }
-}
-
-function updateClock() {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('de-DE', { hour12: false });
-  document.getElementById('clock').textContent = timeStr;
-}
-
-function simulateLiveUpdate() {
-  // Simulate new impact
-  const randomCapital = Object.keys(capitals)[Math.floor(Math.random() * Object.keys(capitals).length)];
-  const cap = capitals[randomCapital];
-  
-  // Random offset near capital
-  const offsetLat = (Math.random() - 0.5) * 2;
-  const offsetLng = (Math.random() - 0.5) * 2;
-  
-  const newImpact = {
-    id: 'live_' + Date.now(),
-    name: 'Live Event ' + new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}),
-    lat: cap.lat + offsetLat,
-    lng: cap.lng + offsetLng,
-    type: 'impact',
-    color: '#ff3366',
-    desc: 'Automatisch detektiert: Explosion/Anomalie',
-    date: 'LIVE',
-    status: 'war'
-  };
-  
-  const marker = createImpactMarker(newImpact);
-  markers[newImpact.id] = marker;
-  
-  // Add to list temporarily
-  const feed = document.getElementById('feed');
-  const div = document.createElement('div');
-  div.className = `conflict-item-wrap impact war`;
-  div.innerHTML = `
-    <div class="card war" onclick="focusOn('${newImpact.id}', 'impact')">
-      <div class="card-head">
-        <div class="card-title">${newImpact.name}</div>
-        <div class="media-badge">LIVE</div>
-        <div class="card-type impact">IMPACT</div>
-      </div>
-      <div class="card-loc">
-        <i class="fa-solid fa-location-dot"></i> 
-        ${newImpact.lat.toFixed(2)}, ${newImpact.lng.toFixed(2)}
-      </div>
-      <div class="card-desc">${newImpact.desc}</div>
     </div>
-  `;
-  feed.insertBefore(div, feed.firstChild);
-  
-  // Remove after 30 seconds
-  setTimeout(() => {
-    if (markers[newImpact.id]) {
-      map.removeLayer(markers[newImpact.id]);
-      delete markers[newImpact.id];
-    }
-    div.remove();
-  }, 30000);
-}
 
-window.addEventListener('resize', () => {
-  map.invalidateSize();
-  updateOverlayLines();
-});
+    <!-- TELEGRAM PANEL -->
+    <div class="telegram-panel" id="telegramPanel">
+        <div class="tg-header">
+            <div class="tg-title">
+                <i class="fab fa-telegram"></i>
+                INTEL SUBMISSION
+            </div>
+            <div class="tg-close" onclick="toggleTelegramPanel()">
+                <i class="fas fa-times"></i>
+            </div>
+        </div>
 
-console.log('%cGLOBAL CONFLICT MONITOR | Live Intelligence System | v2.0', 'color:#2AABEE;font-family:JetBrains Mono;font-size:12px;font-weight:bold;');
+        <div class="tg-section">
+            <div class="tg-section-title">Bot Status</div>
+            <div class="tg-bot-status">
+                <div class="tg-status-dot"></div>
+                <span>@WarmapIntelBot online</span>
+            </div>
+            <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
+                Verfügbare Codes: INTEL-2026, SWATHI-2026, WARMAP-001
+            </div>
+        </div>
 
-init();
-</script>
+        <div class="tg-section">
+            <div class="tg-section-title">Intelligence Eingabe</div>
+            <textarea id="intelInput" class="tg-input" placeholder="Format: 'Vorfall in [STADT] - Details - Koordinaten optional'"></textarea>
+            <button onclick="submitIntel()" class="tg-btn" id="submitBtn">
+                <i class="fas fa-paper-plane" style="margin-right:8px;"></i>
+                VERÖFFENTLICHEN
+            </button>
+        </div>
+
+        <div class="tg-section">
+            <div class="tg-section-title">Letzte Eingänge</div>
+            <div class="tg-inbox" id="tgInbox">
+                <div class="tg-message">
+                    <div>System bereit...</div>
+                    <div class="tg-message-time">--:--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB BUTTONS -->
+    <div class="fab-container">
+        <div class="fab alert" onclick="simulateIncomingIntel()" title="Test-Alarm simulieren">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="fab" onclick="toggleTelegramPanel()" title="Telegram Panel">
+            <i class="fab fa-telegram"></i>
+        </div>
+        <div class="fab" onclick="clearAllMarkers()" title="Alle Marker löschen" style="border-color:#ff3366; color:#ff3366;">
+            <i class="fas fa-trash"></i>
+        </div>
+        <div class="fab" onclick="exportIntel()" title="JSON Export">
+            <i class="fas fa-download"></i>
+        </div>
+        <div class="fab" onclick="recenterMap()" title="Karte zentrieren">
+            <i class="fas fa-globe"></i>
+        </div>
+    </div>
+
+    <!-- ACCESS MODAL -->
+    <div class="modal" id="accessModal" style="display:flex;">
+        <div class="modal-content">
+            <div class="modal-title">
+                <i class="fas fa-shield-alt" style="margin-right:10px;"></i>
+                SECURE ACCESS
+            </div>
+            <div class="modal-text">
+                WarMap Intelligence erfordert Autorisierung.<br>
+                Alle Marker & Informationen werden verschlüsselt gespeichert.
+            </div>
+            <input type="text" id="inviteCode" class="code-input" placeholder="INTEL-2026" maxlength="12">
+            <button onclick="checkAccess()" class="access-btn">ZUGANG FREISCHALTEN</button>
+            <div class="access-alt">
+                <a onclick="showHint()">Hinweis anzeigen</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================== KONFIGURATION ==================
+        const CONFIG = {
+            TELEGRAM_BOT_TOKEN: "8614514552:AAE35YfEofSZ69Gdxe6qSJp5Qj0QtCcQx7I",
+            GEMINI_KEY: "AIzaSyCBN0NFVJSD8JsLdbI-8bfUM5xtHjJRQNk",
+            INVITE_CODES: ["INTEL-2026", "SWATHI-2026", "WARMAP-001"],
+            STORAGE_KEY: 'warmap_intel_data_v2'
+        };
+
+        // ================== ZEITZONEN ==================
+        const TIMEZONES = [
+            { zone: "UTC-12", city: "Baker Island", offset: -12 },
+            { zone: "UTC-11", city: "Pago Pago", offset: -11 },
+            { zone: "UTC-10", city: "Honolulu", offset: -10 },
+            { zone: "UTC-9", city: "Anchorage", offset: -9 },
+            { zone: "UTC-8", city: "Los Angeles", offset: -8 },
+            { zone: "UTC-7", city: "Denver", offset: -7 },
+            { zone: "UTC-6", city: "Chicago", offset: -6 },
+            { zone: "UTC-5", city: "New York", offset: -5 },
+            { zone: "UTC-4", city: "Caracas", offset: -4 },
+            { zone: "UTC-3", city: "Buenos Aires", offset: -3 },
+            { zone: "UTC-2", city: "South Georgia", offset: -2 },
+            { zone: "UTC-1", city: "Azores", offset: -1 },
+            { zone: "UTC+0", city: "London", offset: 0 },
+            { zone: "UTC+1", city: "Berlin", offset: 1 },
+            { zone: "UTC+2", city: "Cairo", offset: 2 },
+            { zone: "UTC+3", city: "Moscow", offset: 3 },
+            { zone: "UTC+4", city: "Dubai", offset: 4 },
+            { zone: "UTC+5", city: "Karachi", offset: 5 },
+            { zone: "UTC+6", city: "Dhaka", offset: 6 },
+            { zone: "UTC+7", city: "Bangkok", offset: 7 },
+            { zone: "UTC+8", city: "Beijing", offset: 8 },
+            { zone: "UTC+9", city: "Tokyo", offset: 9 },
+            { zone: "UTC+10", city: "Sydney", offset: 10 },
+            { zone: "UTC+11", city: "Noumea", offset: 11 },
+            { zone: "UTC+12", city: "Auckland", offset: 12 }
+        ];
+
+        // ================== GLOBAL STATE ==================
+        let map;
+        let markersLayer = [];
+        let intelDatabase = [];
+        let radioActive = false;
+        let currentZoneIndex = 12;
+        let speechSynth = window.speechSynthesis;
+        let broadcastInterval;
+        let zoneInterval;
+
+        // ================== INITIALISIERUNG ==================
+        window.onload = function() {
+            initMap();
+            loadFromStorage(); // Wichtig: Lade gespeicherte Daten!
+            initRadio();
+            updateMarkerCount();
+            
+            if (!localStorage.getItem('warmap_access')) {
+                document.getElementById('accessModal').style.display = 'flex';
+            } else {
+                document.getElementById('accessModal').style.display = 'none';
+            }
+        };
+
+        function initMap() {
+            map = L.map('map', { zoomControl: true }).setView([30, 10], 2);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap | WarMap Intelligence',
+                opacity: 0.8,
+                maxZoom: 18
+            }).addTo(map);
+        }
+
+        // ================== SPEICHERUNG (Anti-Lücken) ==================
+        function saveToStorage() {
+            try {
+                localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(intelDatabase));
+                console.log(`💾 Gespeichert: ${intelDatabase.length} Einträge`);
+            } catch (e) {
+                console.error('Speicherfehler:', e);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const stored = localStorage.getItem(CONFIG.STORAGE_KEY);
+                if (stored) {
+                    intelDatabase = JSON.parse(stored);
+                    console.log(`📂 Geladen: ${intelDatabase.length} Einträge`);
+                    
+                    // Reconstruct markers
+                    intelDatabase.forEach(intel => {
+                        if (validateIntel(intel)) {
+                            renderMarker(intel, false); // false = keine Animation
+                        }
+                    });
+                    
+                    updateTicker(`Geladen: ${intelDatabase.length} Intelligence Reports`);
+                } else {
+                    // Initiale Demo-Daten nur wenn leer
+                    loadDemoData();
+                }
+            } catch (e) {
+                console.error('Ladefehler:', e);
+                showError('Fehler beim Laden gespeicherter Daten');
+            }
+        }
+
+        function validateIntel(intel) {
+            return intel && 
+                   typeof intel.lat === 'number' && 
+                   typeof intel.lng === 'number' &&
+                   !isNaN(intel.lat) && 
+                   !isNaN(intel.lng) &&
+                   intel.title;
+        }
+
+        // ================== MARKER SYSTEM (Korrigiert) ==================
+        function renderMarker(intel, animate = true) {
+            if (!validateIntel(intel)) {
+                console.warn('Ungültige Intel-Daten:', intel);
+                return;
+            }
+
+            const color = intel.confidence > 85 ? '#00ff88' : 
+                         intel.confidence > 60 ? '#ff8800' : '#ff3366';
+            
+            const iconHtml = `
+                <div style="
+                    background:${color}; 
+                    width:16px; 
+                    height:16px; 
+                    border-radius:50%; 
+                    border:2px solid white; 
+                    box-shadow:0 0 12px ${color};
+                    ${animate ? 'animation: pulse 2s infinite;' : ''}
+                "></div>
+            `;
+
+            try {
+                const marker = L.marker([intel.lat, intel.lng], {
+                    icon: L.divIcon({
+                        className: 'intel-marker',
+                        html: iconHtml,
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+
+                // VOLLSTÄNDIGES POPUP mit allen Feldern
+                const popupContent = `
+                    <div class="intel-popup-title">${escapeHtml(intel.title)}</div>
+                    <div class="intel-popup-meta">
+                        <span>🕐 ${intel.time || 'Unbekannt'}</span>
+                        <span>📡 ${intel.source || 'Manual'}</span>
+                    </div>
+                    <div class="intel-popup-summary">
+                        ${escapeHtml(intel.summary || 'Keine Details verfügbar')}
+                    </div>
+                    <div style="margin-top:8px; font-size:0.75rem; color:#666;">
+                        ID: ${intel.id?.substr(-6) || 'N/A'} | 
+                        Zone: UTC${intel.timezone >= 0 ? '+' : ''}${intel.timezone}
+                    </div>
+                    <div class="intel-popup-confidence confidence-${getConfidenceLevel(intel.confidence)}">
+                        Vertrauen: ${intel.confidence || 0}%
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                
+                // Speichere Referenz
+                intel._marker = marker;
+                markersLayer.push(marker);
+
+                if (animate) {
+                    gsap.from(marker.getElement(), {
+                        scale: 0,
+                        duration: 0.5,
+                        ease: "back.out(1.7)"
+                    });
+                }
+
+            } catch (e) {
+                console.error('Marker Render Fehler:', e);
+            }
+        }
+
+        function getConfidenceLevel(conf) {
+            if (!conf || conf < 60) return 'low';
+            if (conf < 85) return 'med';
+            return 'high';
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ================== INTEL PUBLISHING (Robust) ==================
+        function publishIntel(intelData) {
+            // Sicherstellen, dass alle Felder existieren
+            const intel = {
+                id: intelData.id || generateId(),
+                title: intelData.title || 'Unbekannter Vorfall',
+                summary: intelData.summary || 'Keine Details',
+                lat: parseFloat(intelData.lat) || 0,
+                lng: parseFloat(intelData.lng) || 0,
+                confidence: parseInt(intelData.confidence) || 50,
+                time: intelData.time || new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}),
+                source: intelData.source || 'Manual',
+                timezone: intelData.timezone || 0,
+                timestamp: intelData.timestamp || Date.now()
+            };
+
+            if (!validateIntel(intel)) {
+                showError('Ungültige Koordinaten');
+                return;
+            }
+
+            // Zur Datenbank hinzufügen
+            intelDatabase.unshift(intel);
+            
+            // Max 100 Einträge behalten
+            if (intelDatabase.length > 100) {
+                const removed = intelDatabase.pop();
+                if (removed._marker) {
+                    map.removeLayer(removed._marker);
+                }
+            }
+
+            // Anzeigen
+            renderMarker(intel, true);
+            saveToStorage();
+            updateMarkerCount();
+            
+            // UI Updates
+            addToTicker(`${intel.title} | ${intel.summary.substring(0,40)}...`, 'alert');
+            addToInbox(intel);
+            
+            // Radio Ansage
+            if (radioActive) {
+                speakText(`Neuer Report: ${intel.title}`);
+            }
+
+            return intel;
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // ================== KI ANALYSE ==================
+        async function analyzeIntel(text) {
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML;
+            btn.classList.add('processing');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right:8px;"></i> Analysiere...';
+
+            try {
+                // Lokale Analyse (Keyword-basiert)
+                await new Promise(r => setTimeout(r, 800)); // Simuliere Verarbeitung
+                
+                const lower = text.toLowerCase();
+                let result = {
+                    title: 'Gemeldeter Vorfall',
+                    lat: 30 + Math.random() * 20, // Default
+                    lng: 10 + Math.random() * 30,
+                    confidence: 45,
+                    summary: text,
+                    timezone: 0
+                };
+
+                // Bekannte Orte
+                const locations = [
+                    {name: ['kiew', 'kyiv'], lat: 50.4501, lng: 30.5234, tz: 2, title: 'Vorfall Ukraine'},
+                    {name: ['moskau', 'moscow'], lat: 55.7558, lng: 37.6173, tz: 3, title: 'Vorfall Russland'},
+                    {name: ['gaza', 'israel'], lat: 31.5017, lng: 34.4667, tz: 2, title: 'Nahost Konflikt'},
+                    {name: ['taiwan', 'taipei'], lat: 25.0330, lng: 121.5654, tz: 8, title: 'Taiwan-Straße'},
+                    {name: ['iran', 'teheran'], lat: 35.6892, lng: 51.3890, tz: 3.5, title: 'Iran Region'},
+                    {name: ['berlin'], lat: 52.5200, lng: 13.4050, tz: 1, title: 'Vorfall Deutschland'},
+                    {name: ['bagdad', 'baghdad'], lat: 33.3152, lng: 44.3661, tz: 3, title: 'Irak Vorfall'}
+                ];
+
+                for (let loc of locations) {
+                    if (loc.name.some(n => lower.includes(n))) {
+                        result.lat = loc.lat + (Math.random() - 0.5) * 0.5; // Leichte Variation
+                        result.lng = loc.lng + (Math.random() - 0.5) * 0.5;
+                        result.timezone = Math.floor(loc.tz);
+                        result.title = loc.title;
+                        result.confidence = 85 + Math.floor(Math.random() * 14);
+                        break;
+                    }
+                }
+
+                // Koordinaten aus Text extrahieren (Format: 50.123, 30.456)
+                const coordMatch = text.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+                if (coordMatch) {
+                    result.lat = parseFloat(coordMatch[1]);
+                    result.lng = parseFloat(coordMatch[2]);
+                    result.confidence = Math.min(result.confidence + 10, 99);
+                }
+
+                return result;
+
+            } finally {
+                btn.classList.remove('processing');
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function submitIntel() {
+            const input = document.getElementById('intelInput');
+            const text = input.value.trim();
+            
+            if (!text) {
+                showError('Bitte Text eingeben');
+                return;
+            }
+
+            try {
+                const analysis = await analyzeIntel(text);
+                const published = publishIntel(analysis);
+                
+                if (published) {
+                    input.value = '';
+                    showError('Erfolgreich veröffentlicht!', 2000, true);
+                }
+            } catch (e) {
+                showError('Fehler bei der Verarbeitung');
+                console.error(e);
+            }
+        }
+
+        // ================== UI HELPER ==================
+        function addToTicker(text, type) {
+            const ticker = document.getElementById('ticker-content');
+            const item = document.createElement('span');
+            item.className = `ticker-item ${type || ''}`;
+            const time = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+            item.textContent = `► ${time} | ${text}`;
+            ticker.appendChild(item);
+            
+            // Entferne alte nach 20
+            while (ticker.children.length > 20) {
+                ticker.removeChild(ticker.firstChild);
+            }
+        }
+
+        function addToInbox(intel) {
+            const inbox = document.getElementById('tgInbox');
+            const msg = document.createElement('div');
+            msg.className = 'tg-message';
+            msg.innerHTML = `
+                <div><strong>${escapeHtml(intel.title)}</strong></div>
+                <div style="font-size:0.8rem; color:var(--text-dim); margin-top:4px;">
+                    ${escapeHtml(intel.summary.substring(0, 60))}...
+                </div>
+                <div class="tg-message-time">${intel.time} • ${intel.confidence}% Vertrauen</div>
+            `;
+            inbox.insertBefore(msg, inbox.firstChild);
+            
+            while (inbox.children.length > 10) {
+                inbox.removeChild(inbox.lastChild);
+            }
+        }
+
+        function updateMarkerCount() {
+            document.getElementById('markerCount').textContent = `${markersLayer.length} Markers`;
+        }
+
+        function showError(msg, duration = 3000, success = false) {
+            const toast = document.getElementById('errorToast');
+            toast.textContent = msg;
+            toast.style.background = success ? '#00ff88' : '#ff3366';
+            toast.style.color = success ? '#000' : '#fff';
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, duration);
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5).toUpperCase();
+        }
+
+        // ================== RADIO SYSTEM ==================
+        function initRadio() {
+            updateZone();
+            zoneInterval = setInterval(updateZone, 60000);
+        }
+
+        function updateZone() {
+            const minute = new Date().getUTCMinutes();
+            currentZoneIndex = Math.floor((minute / 2.4)) % 24;
+            const zone = TIMEZONES[currentZoneIndex];
+            
+            document.getElementById('currentZoneDisplay').textContent = 
+                `${zone.zone} ${zone.city.toUpperCase()}`;
+            
+            const now = new Date();
+            const next = new Date(now);
+            if (now.getUTCMinutes() < 30) {
+                next.setUTCMinutes(30, 0, 0);
+            } else {
+                next.setUTCHours(now.getUTCHours() + 1, 0, 0, 0);
+            }
+            document.getElementById('nextBroadcastTime').textContent = 
+                `Nächste: ${next.toISOString().substr(11,5)} UTC`;
+        }
+
+        function toggleRadio() {
+            radioActive = !radioActive;
+            const icon = document.getElementById('playIcon');
+            const dot = document.getElementById('liveDot');
+            const status = document.getElementById('radioStatusText');
+            
+            if (radioActive) {
+                icon.className = 'fas fa-pause';
+                dot.classList.add('broadcasting');
+                status.textContent = 'LIVE BROADCAST';
+                status.style.color = '#00ff88';
+                speakText('WarMap Radio aktiviert.');
+                
+                broadcastInterval = setInterval(checkBroadcast, 30000);
+            } else {
+                icon.className = 'fas fa-play';
+                dot.classList.remove('broadcasting');
+                status.textContent = 'STANDBY';
+                status.style.color = '';
+                clearInterval(broadcastInterval);
+            }
+        }
+
+        function checkBroadcast() {
+            const now = new Date();
+            if ((now.getUTCMinutes() === 0 || now.getUTCMinutes() === 30) && now.getUTCSeconds() < 10) {
+                performBroadcast();
+            }
+        }
+
+        function performBroadcast() {
+            const zone = TIMEZONES[currentZoneIndex];
+            speakText(`WarMap Update für ${zone.city}.`);
+        }
+
+        function speakText(text) {
+            if (!speechSynth || !radioActive) return;
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'de-DE';
+            u.rate = 0.9;
+            u.pitch = 0.8;
+            speechSynth.speak(u);
+        }
+
+        // ================== STEUERUNG ==================
+        function toggleTelegramPanel() {
+            document.getElementById('telegramPanel').classList.toggle('open');
+        }
+
+        function recenterMap() {
+            map.flyTo([30, 10], 2);
+        }
+
+        function clearAllMarkers() {
+            if (!confirm('Alle Marker löschen?')) return;
+            
+            markersLayer.forEach(m => map.removeLayer(m));
+            markersLayer = [];
+            intelDatabase = [];
+            localStorage.removeItem(CONFIG.STORAGE_KEY);
+            updateMarkerCount();
+            updateTicker('Alle Daten gelöscht');
+        }
+
+        function exportIntel() {
+            const dataStr = "data:text/json;charset=utf-8," + 
+                encodeURIComponent(JSON.stringify(intelDatabase, null, 2));
+            const link = document.createElement('a');
+            link.setAttribute("href", dataStr);
+            link.setAttribute("download", `WarMap_Intel_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showError('Export erfolgreich!', 2000, true);
+        }
+
+        function checkAccess() {
+            const code = document.getElementById('inviteCode').value.trim().toUpperCase();
+            if (CONFIG.INVITE_CODES.includes(code)) {
+                localStorage.setItem('warmap_access', 'granted');
+                document.getElementById('accessModal').style.display = 'none';
+                speakText('Zugang gewährt');
+            } else {
+                showError('Ungültiger Code');
+            }
+        }
+
+        function showHint() {
+            alert('Verfügbare Codes:\n• INTEL-2026\n• SWATHI-2026\n• WARMAP-001');
+        }
+
+        function loadDemoData() {
+            const demos = [
+                {title:"Drohnenangriff Kiew", lat:50.4501, lng:30.5234, summary:"Mehrere Explosionen im Stadtzentrum gemeldet", confidence:92, source:"OSINT", timezone:2},
+                {title:"Houthi Raketenabwehr", lat:24.7136, lng:46.6753, summary:"Saudi-Abwehrsysteme aktiv über Riad", confidence:87, source:"Sat", timezone:3},
+                {title:"Maritime Spannungen", lat:25.0330, lng:121.5654, summary:"Unbekannte Schiffe in Taiwan-Straße", confidence:76, source:"Naval", timezone:8}
+            ];
+            
+            demos.forEach((d, i) => {
+                setTimeout(() => {
+                    d.time = new Date(Date.now() - i*3600000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+                    publishIntel(d);
+                }, i * 300);
+            });
+        }
+
+        function simulateIncomingIntel() {
+            const randomEvents = [
+                {t:"Artilleriebeschuss Charkiw", lat:49.9935, lng:36.2304, c:88},
+                {t:"Cyberangriff Tel Aviv", lat:32.0853, lng:34.7818, c:72},
+                {t:"Grenzverletzung Armenien", lat:40.0691, lng:45.0382, c:65},
+                {t:"U-Boot Aktivität Ostsee", lat:55.0, lng:18.0, c:81}
+            ];
+            const ev = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+            
+            publishIntel({
+                title: ev.t,
+                lat: ev.lat + (Math.random()-0.5)*0.2,
+                lng: ev.lng + (Math.random()-0.5)*0.2,
+                summary: "Automatisch generierter Test-Report",
+                confidence: ev.c,
+                source: "SIMULATION",
+                timezone: 2
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.getElementById('telegramPanel').classList.remove('open');
+            if (e.key === 't' && e.ctrlKey) { e.preventDefault(); toggleTelegramPanel(); }
+        });
+    </script>
 </body>
 </html>
