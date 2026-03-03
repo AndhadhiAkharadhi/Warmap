@@ -2,1108 +2,1326 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WarMap Intelligence Radio • Secure Live Feed 2026</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="WarMap Intelligence - Global Conflict Monitor with 250+ News Sources">
+    <title>WarMap Intelligence | Global Conflict Monitor 2026</title>
+    
+    <!-- Externe Ressourcen -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
-        
         :root {
-            --bg-deep: #0a0e1a;
-            --bg-panel: rgba(10, 20, 40, 0.95);
-            --cyan: #00d4ff;
-            --red: #ff3366;
-            --green: #00ff88;
-            --orange: #ff8800;
-            --text: #e0e6ed;
-            --text-dim: #8b92a8;
-            --border: rgba(0, 212, 255, 0.3);
+            --bg-deep: #020617;
+            --bg-panel: rgba(15, 23, 42, 0.95);
+            --cyan: #06b6d4;
+            --red: #f43f5e;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --purple: #8b5cf6;
+            --text: #f1f5f9;
+            --text-dim: #64748b;
+            --border: rgba(6, 182, 212, 0.3);
         }
 
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--bg-deep);
             color: var(--text);
             overflow: hidden;
             height: 100vh;
+            width: 100vw;
         }
 
-        .watermark {
+        /* Scanner Overlay */
+        .scanner-overlay {
             position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 8rem;
-            color: rgba(255,255,255,0.02);
-            font-family: 'JetBrains Mono', monospace;
-            z-index: 9999;
-            pointer-events: none;
-            user-select: none;
-            letter-spacing: 10px;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.98);
+            z-index: 100000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(20px);
         }
+        .scanner-overlay.active { display: flex; }
+        
+        .scanner-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin-bottom: 40px;
+        }
+        
+        .scanner-globe {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--cyan);
+            border-radius: 50%;
+            position: relative;
+            animation: rotate 20s linear infinite;
+            box-shadow: 0 0 60px rgba(6, 182, 212, 0.3), inset 0 0 60px rgba(6, 182, 212, 0.1);
+        }
+        
+        .scanner-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140%;
+            height: 140%;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        
+        @keyframes rotate { to { transform: rotate(360deg); } }
+        @keyframes pulse-ring {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+        
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: -50%;
+            width: 200%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            animation: scan 3s linear infinite;
+            box-shadow: 0 0 10px var(--cyan);
+        }
+        
+        @keyframes scan { 
+            0% { transform: translateY(-100px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
+        }
+        
+        .scanner-exit {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(244, 63, 94, 0.2);
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .scanner-exit:hover { background: var(--red); color: white; }
 
+        .scanner-info {
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            max-width: 90%;
+        }
+        
+        .scanner-source {
+            color: var(--cyan);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            min-height: 1.5em;
+        }
+        
+        .scanner-count {
+            color: var(--text-dim);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        
+        .scanner-progress {
+            width: 400px;
+            max-width: 90vw;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .scanner-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan), var(--green));
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 20px var(--cyan);
+        }
+        
+        .scanner-stats {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+        
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-value { font-size: 1.5rem; color: var(--cyan); font-weight: 700; }
+        .stat-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 5px; }
+
+        /* Top Bar */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(15, 23, 42, 0.98);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--cyan);
+            letter-spacing: -0.5px;
+        }
+        
+        .top-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .source-counter {
+            background: rgba(0,0,0,0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            display: none;
+        }
+        
+        @media (min-width: 768px) { .source-counter { display: block; } }
+        
+        .source-counter span { color: var(--cyan); font-weight: 700; }
+        
+        .btn {
+            background: linear-gradient(135deg, var(--cyan), #0891b2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+        
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4); }
+        .btn:active { transform: translateY(0); }
+        
+        .btn.processing {
+            background: linear-gradient(135deg, var(--orange), #d97706);
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        .btn.secondary {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+        }
+        
+        .btn.secondary:hover { background: rgba(6, 182, 212, 0.1); }
+
+        /* Map */
         #map {
             position: absolute;
             top: 60px;
             left: 0;
-            width: 100%;
-            height: calc(100vh - 102px);
+            right: 0;
+            bottom: 42px;
             z-index: 1;
+            background: var(--bg-deep);
         }
 
-        /* RADIO BAR */
-        .radio-bar {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 60px;
-            background: rgba(10, 15, 35, 0.98);
-            border-bottom: 2px solid var(--cyan);
-            display: flex;
-            align-items: center;
-            padding: 0 25px;
-            z-index: 10000;
-            box-shadow: 0 4px 20px rgba(0,212,255,0.2);
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .radio-status {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1rem;
-        }
-        .live-dot {
-            width: 14px; height: 14px;
-            background: #ff3366;
-            border-radius: 50%;
-            animation: pulse-radio 1.5s infinite;
-            box-shadow: 0 0 10px #ff3366;
-        }
-        .live-dot.broadcasting {
-            background: var(--green);
-            box-shadow: 0 0 15px var(--green);
-            animation: pulse-green 1s infinite;
-        }
-        @keyframes pulse-radio {
-            0%,100% { opacity: 0.6; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.1); }
-        }
-        @keyframes pulse-green {
-            0%,100% { opacity: 1; box-shadow: 0 0 5px var(--green); }
-            50% { opacity: 0.7; box-shadow: 0 0 20px var(--green); }
-        }
-        .radio-zone-info {
-            margin-left: 30px;
-            padding-left: 20px;
-            border-left: 1px solid var(--border);
-            color: var(--cyan);
-            font-size: 0.9rem;
-        }
-        .radio-zone-name {
-            color: var(--text);
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-
-        /* TICKER */
+        /* Ticker */
         .ticker {
             position: fixed;
-            bottom: 0; left: 0; right: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             height: 42px;
-            background: rgba(10,15,35,0.95);
-            border-top: 1px solid var(--cyan);
+            background: rgba(2, 6, 23, 0.95);
+            border-top: 1px solid var(--border);
             overflow: hidden;
-            z-index: 10001;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            white-space: nowrap;
+            z-index: 1000;
             display: flex;
             align-items: center;
         }
+        
         .ticker-content {
-            display: inline-block;
+            display: flex;
+            white-space: nowrap;
+            animation: ticker 40s linear infinite;
             padding-left: 100%;
-            animation: ticker-scroll 40s linear infinite;
         }
-        @keyframes ticker-scroll {
+        
+        @keyframes ticker {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
+            100% { transform: translateX(-200%); }
         }
+        
         .ticker-item {
-            display: inline-block;
-            margin-right: 50px;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 60px;
+            font-size: 0.9rem;
             color: var(--text-dim);
         }
-        .ticker-item.alert {
-            color: var(--red);
-            font-weight: 700;
-        }
-        .ticker-item.new::before {
-            content: '● ';
-            color: var(--red);
+        
+        .ticker-item.alert { color: var(--red); font-weight: 600; }
+        .ticker-item.success { color: var(--green); }
+        
+        .ticker-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--red);
+            border-radius: 50%;
+            margin-right: 10px;
             animation: blink 1s infinite;
         }
+        
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* TELEGRAM PANEL */
-        .telegram-panel {
+        /* Side Panel */
+        .side-panel {
             position: fixed;
-            top: 80px; right: -420px;
-            width: 400px;
-            height: calc(100vh - 140px);
+            top: 70px;
+            left: 10px;
+            width: 350px;
+            max-width: calc(100vw - 20px);
+            max-height: calc(100vh - 130px);
             background: var(--bg-panel);
-            border-left: 2px solid var(--cyan);
-            border-radius: 12px 0 0 12px;
-            padding: 25px;
-            transition: right 0.4s cubic-bezier(0.23,1,0.32,1);
-            z-index: 10002;
-            box-shadow: -10px 0 40px rgba(0,0,0,0.8);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            z-index: 500;
             overflow-y: auto;
+            transform: translateX(-120%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
-        .telegram-panel.open { right: 0; }
-        .tg-header {
+        
+        .side-panel.open { transform: translateX(0); }
+        
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg-panel);
+            z-index: 10;
         }
-        .tg-title { 
-            color: var(--cyan); 
-            font-weight: 700; 
-            font-size: 1.1rem;
+        
+        .panel-title { font-weight: 700; color: var(--cyan); font-size: 1.1rem; }
+        
+        .panel-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-        .tg-close { 
-            cursor: pointer; 
-            color: var(--text-dim); 
-            font-size: 1.2rem;
+            justify-content: center;
+            border-radius: 6px;
             transition: 0.2s;
         }
-        .tg-close:hover { color: var(--red); transform: rotate(90deg); }
         
-        .tg-section {
-            margin-bottom: 20px;
+        .panel-close:hover { background: rgba(244,63,94,0.2); color: var(--red); }
+        
+        .panel-content { padding: 15px; }
+        
+        .intel-item {
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid var(--cyan);
             padding: 15px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-        .tg-section-title {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-        .tg-bot-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--green);
-            font-size: 0.9rem;
-        }
-        .tg-status-dot {
-            width: 8px; height: 8px;
-            background: var(--green);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--green);
-        }
-        
-        .tg-input {
-            width: 100%;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 12px;
-            border-radius: 6px;
-            font-family: inherit;
-            margin-bottom: 10px;
-            resize: vertical;
-            min-height: 80px;
-        }
-        .tg-input:focus {
-            outline: none;
-            border-color: var(--cyan);
-            box-shadow: 0 0 10px rgba(0,212,255,0.2);
-        }
-        .tg-btn {
-            width: 100%;
-            padding: 12px;
-            background: var(--cyan);
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            font-weight: 700;
+            margin-bottom: 12px;
+            border-radius: 0 8px 8px 0;
             cursor: pointer;
             transition: all 0.2s;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-        }
-        .tg-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,212,255,0.4);
-        }
-        .tg-btn.processing {
-            background: var(--orange);
-            pointer-events: none;
         }
         
-        .tg-inbox {
-            max-height: 200px;
-            overflow-y: auto;
+        .intel-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
         }
-        .tg-message {
-            background: rgba(255,255,255,0.05);
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-size: 0.85rem;
-            border-left: 3px solid var(--cyan);
-        }
-        .tg-message-time {
-            font-size: 0.7rem;
+        
+        .intel-item-title { font-weight: 600; margin-bottom: 5px; color: white; }
+        .intel-item-meta {
+            font-size: 0.8rem;
             color: var(--text-dim);
-            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
         }
+        
+        .confidence-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .conf-high { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+        .conf-med { background: rgba(245, 158, 11, 0.2); color: var(--orange); }
+        .conf-low { background: rgba(244, 63, 94, 0.2); color: var(--red); }
 
-        /* FLOATING BUTTONS */
+        /* Floating Action Button */
         .fab-container {
             position: fixed;
-            bottom: 70px; right: 25px;
+            bottom: 60px;
+            right: 20px;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            z-index: 10003;
+            z-index: 600;
         }
-        .fab {
-            width: 58px; height: 58px;
-            background: var(--bg-panel);
-            border: 2px solid var(--cyan);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            color: var(--cyan);
-            box-shadow: 0 8px 25px rgba(0,212,255,0.3);
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-        .fab:hover {
-            transform: scale(1.12) rotate(12deg);
-            background: var(--cyan);
-            color: #000;
-        }
-        .fab.alert {
-            border-color: var(--red);
-            color: var(--red);
-            animation: pulse-border 2s infinite;
-        }
-
-        /* ACCESS MODAL */
-        .modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 20000;
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            background: var(--bg-panel);
-            padding: 40px;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 420px;
-            border: 1px solid var(--cyan);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-        }
-        .modal-title {
-            color: var(--cyan);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        .modal-text {
-            color: var(--text-dim);
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-        .code-input {
-            width: 100%;
-            padding: 15px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid var(--border);
-            color: var(--text);
-            border-radius: 8px;
-            text-align: center;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.2rem;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-        }
-        .code-input:focus {
-            outline: none;
-            border-color: var(--cyan);
-        }
-        .access-btn {
-            width: 100%;
-            margin-top: 20px;
-            padding: 15px;
-            background: var(--red);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .access-btn:hover {
-            background: #ff5588;
-            transform: translateY(-2px);
-        }
-        .access-alt {
-            text-align: center;
-            margin-top: 20px;
-            color: var(--text-dim);
-            font-size: 0.85rem;
-        }
-        .access-alt a {
-            color: var(--cyan);
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        /* POPUP STYLES */
-        .leaflet-popup-content-wrapper {
-            background: var(--bg-panel);
-            color: var(--text);
-            border: 1px solid var(--cyan);
-            border-radius: 8px;
-            min-width: 250px;
-        }
-        .leaflet-popup-tip {
-            background: var(--cyan);
-        }
-        .intel-popup-title {
-            color: var(--cyan);
-            font-weight: 700;
-            margin-bottom: 5px;
-            font-size: 1.1rem;
-        }
-        .intel-popup-meta {
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .intel-popup-summary {
-            line-height: 1.4;
-            margin-bottom: 10px;
-        }
-        .intel-popup-confidence {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-        .confidence-high { background: rgba(0,255,136,0.2); color: var(--green); }
-        .confidence-med { background: rgba(255,136,0,0.2); color: var(--orange); }
-        .confidence-low { background: rgba(255,51,102,0.2); color: var(--red); }
         
-        .error-toast {
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transition: all 0.3s;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1) rotate(10deg);
+            background: var(--cyan);
+            color: black;
+            box-shadow: 0 6px 25px rgba(6, 182, 212, 0.5);
+        }
+        
+        .fab.danger { border-color: var(--red); color: var(--red); }
+        .fab.danger:hover { background: var(--red); color: white; }
+
+        /* Toast Notification */
+        .toast {
             position: fixed;
             top: 80px;
             left: 50%;
-            transform: translateX(-50%);
-            background: var(--red);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            z-index: 30000;
-            display: none;
-            box-shadow: 0 4px 20px rgba(255,51,102,0.4);
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 100001;
+            opacity: 0;
+            transition: all 0.3s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success { border-color: var(--green); }
+        .toast.error { border-color: var(--red); }
+        .toast.info { border-color: var(--cyan); }
+
+        /* Popup Styles */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .leaflet-popup-tip { background: var(--cyan); }
+        
+        .popup-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+        
+        .popup-title { 
+            font-weight: 700; 
+            color: var(--cyan); 
+            font-size: 1.1rem;
+            max-width: 200px;
+        }
+        
+        .popup-time { 
+            font-size: 0.75rem; 
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+        
+        .popup-source {
+            display: inline-block;
+            background: rgba(6, 182, 212, 0.2);
+            color: var(--cyan);
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .popup-desc { line-height: 1.5; font-size: 0.95rem; margin-bottom: 10px; }
+        
+        .popup-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+            margin-top: 10px;
         }
 
+        /* Mobile Optimizations */
         @media (max-width: 768px) {
-            .telegram-panel { width: 100%; right: -100%; }
-            .radio-zone-info { display: none; }
-            .watermark { font-size: 4rem; }
+            .top-bar { padding: 0 10px; height: 55px; }
+            .brand { font-size: 1rem; }
+            .brand i { font-size: 1.2rem; }
+            .btn { padding: 8px 12px; font-size: 0.8rem; }
+            .btn span { display: none; }
+            #map { top: 55px; }
+            .side-panel { width: calc(100vw - 20px); max-height: calc(100vh - 100px); }
+            .scanner-stats { grid-template-columns: 1fr; gap: 10px; }
+            .scanner-container { width: 150px; height: 150px; }
         }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div class="watermark">WARMAP 2026</div>
-    <div class="error-toast" id="errorToast"></div>
-
-    <!-- RADIO BAR -->
-    <div class="radio-bar">
-        <div class="radio-status">
-            <div class="live-dot" id="liveDot"></div>
-            <span id="radioStatusText">STANDBY</span>
+    <!-- Scanner Overlay -->
+    <div class="scanner-overlay" id="scannerOverlay">
+        <button class="scanner-exit" onclick="stopScan()">
+            <i class="fas fa-times"></i> ABBRECHEN
+        </button>
+        
+        <div class="scanner-container">
+            <div class="scanner-globe">
+                <div class="scanner-line"></div>
+            </div>
+            <div class="scanner-ring"></div>
         </div>
         
-        <div class="radio-zone-info">
-            <div id="currentZoneDisplay">UTC+00:00 LONDON</div>
-            <div class="radio-zone-name" id="nextBroadcastTime">Nächste Ausgabe: --:--</div>
-        </div>
-
-        <div style="margin-left:auto; display:flex; gap:15px; align-items:center;">
-            <span id="markerCount" style="color:var(--text-dim); font-size:0.8rem;">0 Markers</span>
-            <button onclick="toggleRadio()" class="fab" style="position:static; width:40px; height:40px; font-size:1rem;">
-                <i class="fas fa-play" id="playIcon"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- MAP -->
-    <div id="map"></div>
-
-    <!-- TICKER -->
-    <div class="ticker">
-        <div id="ticker-content" class="ticker-content">
-            <span class="ticker-item">System initialisiert... Warte auf Intel...</span>
-        </div>
-    </div>
-
-    <!-- TELEGRAM PANEL -->
-    <div class="telegram-panel" id="telegramPanel">
-        <div class="tg-header">
-            <div class="tg-title">
-                <i class="fab fa-telegram"></i>
-                INTEL SUBMISSION
+        <div class="scanner-info">
+            <div class="scanner-source" id="scanSource">Initialisiere Netzwerk...</div>
+            <div class="scanner-count" id="scanCount">0 / 250 Quellen</div>
+            <div class="scanner-progress">
+                <div class="scanner-bar" id="scanBar"></div>
             </div>
-            <div class="tg-close" onclick="toggleTelegramPanel()">
-                <i class="fas fa-times"></i>
-            </div>
-        </div>
-
-        <div class="tg-section">
-            <div class="tg-section-title">Bot Status</div>
-            <div class="tg-bot-status">
-                <div class="tg-status-dot"></div>
-                <span>@WarmapIntelBot online</span>
-            </div>
-            <div style="margin-top:8px; font-size:0.8rem; color:var(--text-dim);">
-                Verfügbare Codes: INTEL-2026, SWATHI-2026, WARMAP-001
-            </div>
-        </div>
-
-        <div class="tg-section">
-            <div class="tg-section-title">Intelligence Eingabe</div>
-            <textarea id="intelInput" class="tg-input" placeholder="Format: 'Vorfall in [STADT] - Details - Koordinaten optional'"></textarea>
-            <button onclick="submitIntel()" class="tg-btn" id="submitBtn">
-                <i class="fas fa-paper-plane" style="margin-right:8px;"></i>
-                VERÖFFENTLICHEN
-            </button>
-        </div>
-
-        <div class="tg-section">
-            <div class="tg-section-title">Letzte Eingänge</div>
-            <div class="tg-inbox" id="tgInbox">
-                <div class="tg-message">
-                    <div>System bereit...</div>
-                    <div class="tg-message-time">--:--</div>
+            
+            <div class="scanner-stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="statFound">0</div>
+                    <div class="stat-label">Neue Ereignisse</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="statAnalyzed">0</div>
+                    <div class="stat-label">Analysiert</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="statConfidence">0%</div>
+                    <div class="stat-label">Ø Vertrauen</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- FAB BUTTONS -->
-    <div class="fab-container">
-        <div class="fab alert" onclick="simulateIncomingIntel()" title="Test-Alarm simulieren">
-            <i class="fas fa-bell"></i>
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-info-circle"></i>
+        <span id="toastMsg">Notification</span>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="brand">
+            <i class="fas fa-satellite-dish"></i>
+            <span>WARMAP INTELLIGENCE</span>
         </div>
-        <div class="fab" onclick="toggleTelegramPanel()" title="Telegram Panel">
-            <i class="fab fa-telegram"></i>
-        </div>
-        <div class="fab" onclick="clearAllMarkers()" title="Alle Marker löschen" style="border-color:#ff3366; color:#ff3366;">
-            <i class="fas fa-trash"></i>
-        </div>
-        <div class="fab" onclick="exportIntel()" title="JSON Export">
-            <i class="fas fa-download"></i>
-        </div>
-        <div class="fab" onclick="recenterMap()" title="Karte zentrieren">
-            <i class="fas fa-globe"></i>
+        
+        <div class="top-controls">
+            <div class="source-counter">
+                <i class="fas fa-database"></i>
+                <span id="sourceCount">0</span> Quellen | 
+                <span id="markerCount">0</span> Marker
+            </div>
+            
+            <button class="btn" id="scanBtn" onclick="startGlobalScan()">
+                <i class="fas fa-sync-alt"></i>
+                <span>GLOBAL SCAN</span>
+            </button>
+            
+            <button class="btn secondary" onclick="togglePanel()">
+                <i class="fas fa-list"></i>
+            </button>
         </div>
     </div>
 
-    <!-- ACCESS MODAL -->
-    <div class="modal" id="accessModal" style="display:flex;">
-        <div class="modal-content">
-            <div class="modal-title">
-                <i class="fas fa-shield-alt" style="margin-right:10px;"></i>
-                SECURE ACCESS
+    <!-- Side Panel -->
+    <div class="side-panel" id="sidePanel">
+        <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-crosshairs" style="margin-right:8px;"></i>Live Intelligence</div>
+            <button class="panel-close" onclick="togglePanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="panel-content" id="panelContent">
+            <div style="text-align:center; color:var(--text-dim); padding:40px 20px;">
+                <i class="fas fa-satellite" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i>
+                <div>Keine Daten verfügbar.<br>Starte einen Global Scan.</div>
             </div>
-            <div class="modal-text">
-                WarMap Intelligence erfordert Autorisierung.<br>
-                Alle Marker & Informationen werden verschlüsselt gespeichert.
-            </div>
-            <input type="text" id="inviteCode" class="code-input" placeholder="INTEL-2026" maxlength="12">
-            <button onclick="checkAccess()" class="access-btn">ZUGANG FREISCHALTEN</button>
-            <div class="access-alt">
-                <a onclick="showHint()">Hinweis anzeigen</a>
-            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Ticker -->
+    <div class="ticker">
+        <div class="ticker-content" id="ticker">
+            <div class="ticker-item">WarMap Intelligence System bereit...</div>
+        </div>
+    </div>
+
+    <!-- FABs -->
+    <div class="fab-container">
+        <div class="fab danger" onclick="clearAllData()" title="Alle Daten löschen">
+            <i class="fas fa-trash"></i>
+        </div>
+        <div class="fab" onclick="exportData()" title="Export JSON">
+            <i class="fas fa-download"></i>
+        </div>
+        <div class="fab" onclick="locateUser()" title="Mein Standort">
+            <i class="fas fa-location-arrow"></i>
+        </div>
+        <div class="fab" onclick="map.flyTo([30,10],2)" title="Weltansicht">
+            <i class="fas fa-globe"></i>
         </div>
     </div>
 
     <script>
         // ================== KONFIGURATION ==================
-        const CONFIG = {
-            TELEGRAM_BOT_TOKEN: "8614514552:AAE35YfEofSZ69Gdxe6qSJp5Qj0QtCcQx7I",
-            GEMINI_KEY: "AIzaSyCBN0NFVJSD8JsLdbI-8bfUM5xtHjJRQNk",
-            INVITE_CODES: ["INTEL-2026", "SWATHI-2026", "WARMAP-001"],
-            STORAGE_KEY: 'warmap_intel_data_v2'
-        };
-
-        // ================== ZEITZONEN ==================
-        const TIMEZONES = [
-            { zone: "UTC-12", city: "Baker Island", offset: -12 },
-            { zone: "UTC-11", city: "Pago Pago", offset: -11 },
-            { zone: "UTC-10", city: "Honolulu", offset: -10 },
-            { zone: "UTC-9", city: "Anchorage", offset: -9 },
-            { zone: "UTC-8", city: "Los Angeles", offset: -8 },
-            { zone: "UTC-7", city: "Denver", offset: -7 },
-            { zone: "UTC-6", city: "Chicago", offset: -6 },
-            { zone: "UTC-5", city: "New York", offset: -5 },
-            { zone: "UTC-4", city: "Caracas", offset: -4 },
-            { zone: "UTC-3", city: "Buenos Aires", offset: -3 },
-            { zone: "UTC-2", city: "South Georgia", offset: -2 },
-            { zone: "UTC-1", city: "Azores", offset: -1 },
-            { zone: "UTC+0", city: "London", offset: 0 },
-            { zone: "UTC+1", city: "Berlin", offset: 1 },
-            { zone: "UTC+2", city: "Cairo", offset: 2 },
-            { zone: "UTC+3", city: "Moscow", offset: 3 },
-            { zone: "UTC+4", city: "Dubai", offset: 4 },
-            { zone: "UTC+5", city: "Karachi", offset: 5 },
-            { zone: "UTC+6", city: "Dhaka", offset: 6 },
-            { zone: "UTC+7", city: "Bangkok", offset: 7 },
-            { zone: "UTC+8", city: "Beijing", offset: 8 },
-            { zone: "UTC+9", city: "Tokyo", offset: 9 },
-            { zone: "UTC+10", city: "Sydney", offset: 10 },
-            { zone: "UTC+11", city: "Noumea", offset: 11 },
-            { zone: "UTC+12", city: "Auckland", offset: 12 }
+        const NEWS_SOURCES = [
+            {name: "Reuters World", region: "Global", weight: 10, lat: 51.5, lng: -0.1},
+            {name: "BBC World", region: "Global", weight: 10, lat: 51.5, lng: -0.1},
+            {name: "Associated Press", region: "Global", weight: 10, lat: 40.7, lng: -74.0},
+            {name: "AFP", region: "Global", weight: 9, lat: 48.8, lng: 2.3},
+            {name: "Al Jazeera", region: "MENA", weight: 9, lat: 25.3, lng: 51.5},
+            {name: "Deutsche Welle", region: "EU", weight: 8, lat: 50.7, lng: 7.1},
+            {name: "France24", region: "EU", weight: 8, lat: 48.8, lng: 2.3},
+            {name: "The Guardian", region: "UK", weight: 8, lat: 51.5, lng: -0.1},
+            {name: "New York Times", region: "US", weight: 9, lat: 40.7, lng: -74.0},
+            {name: "Washington Post", region: "US", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "CNN International", region: "Global", weight: 8, lat: 40.7, lng: -74.0},
+            {name: "NHK World", region: "Asia", weight: 7, lat: 35.7, lng: 139.7},
+            {name: "Kyiv Independent", region: "Ukraine", weight: 9, lat: 50.4, lng: 30.5},
+            {name: "Pravda Ukraine", region: "Ukraine", weight: 8, lat: 50.4, lng: 30.5},
+            {name: "Moscow Times", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Meduza", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Times of Israel", region: "Israel", weight: 8, lat: 31.8, lng: 35.2},
+            {name: "Jerusalem Post", region: "Israel", weight: 8, lat: 31.8, lng: 35.2},
+            {name: "Middle East Eye", region: "MENA", weight: 7, lat: 25.3, lng: 51.5},
+            {name: "Middle East Monitor", region: "MENA", weight: 7, lat: 25.3, lng: 51.5},
+            {name: "Xinhua", region: "China", weight: 7, lat: 39.9, lng: 116.4},
+            {name: "South China Morning Post", region: "Hong Kong", weight: 7, lat: 22.3, lng: 114.2},
+            {name: "Nikkei Asia", region: "Japan", weight: 8, lat: 35.7, lng: 139.7},
+            {name: "Korea Times", region: "Korea", weight: 7, lat: 37.6, lng: 127.0},
+            {name: "Taipei Times", region: "Taiwan", weight: 7, lat: 25.0, lng: 121.5},
+            {name: "The Hindu", region: "India", weight: 7, lat: 13.1, lng: 80.3},
+            {name: "Dawn", region: "Pakistan", weight: 7, lat: 24.9, lng: 67.0},
+            {name: "Daily Sabah", region: "Turkey", weight: 7, lat: 41.0, lng: 28.9},
+            {name: "Tehran Times", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Saudi Gazette", region: "GCC", weight: 6, lat: 24.7, lng: 46.7},
+            {name: "Gulf News", region: "GCC", weight: 6, lat: 25.3, lng: 55.3},
+            {name: "Libya Observer", region: "Libya", weight: 6, lat: 32.9, lng: 13.2},
+            {name: "Sudan Tribune", region: "Sudan", weight: 6, lat: 15.5, lng: 32.5},
+            {name: "Addis Standard", region: "Ethiopia", weight: 6, lat: 9.0, lng: 38.7},
+            {name: "News24", region: "South Africa", weight: 7, lat: -26.2, lng: 28.0},
+            {name: "Daily Maverick", region: "South Africa", weight: 7, lat: -26.2, lng: 28.0},
+            {name: "The Africa Report", region: "Africa", weight: 7, lat: 6.5, lng: 3.4},
+            {name: "Balkan Insight", region: "Balkans", weight: 7, lat: 44.8, lng: 20.5},
+            {name: "Politico EU", region: "EU", weight: 8, lat: 50.8, lng: 4.4},
+            {name: "El País", region: "EU", weight: 7, lat: 40.4, lng: -3.7},
+            {name: "Le Monde", region: "EU", weight: 8, lat: 48.8, lng: 2.3},
+            {name: "Spiegel International", region: "EU", weight: 8, lat: 53.5, lng: 10.0},
+            {name: "Globe and Mail", region: "Canada", weight: 7, lat: 43.7, lng: -79.4},
+            {name: "Clarín", region: "Argentina", weight: 6, lat: -34.6, lng: -58.4},
+            {name: "Folha de S.Paulo", region: "Brazil", weight: 7, lat: -23.5, lng: -46.6},
+            {name: "El Universal", region: "Mexico", weight: 6, lat: 19.4, lng: -99.1},
+            {name: "Sydney Morning Herald", region: "Australia", weight: 7, lat: -33.9, lng: 151.2},
+            {name: "Bellingcat", region: "OSINT", weight: 9, lat: 52.5, lng: 5.5},
+            {name: "Institute for the Study of War", region: "Think Tank", weight: 9, lat: 38.9, lng: -77.0},
+            {name: "Crisis Group", region: "Think Tank", weight: 9, lat: 50.8, lng: 4.4},
+            {name: "Jane's Defence", region: "Defense", weight: 8, lat: 51.5, lng: -0.1},
+            {name: "Defense News", region: "Defense", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "The War Zone", region: "Defense", weight: 7, lat: 34.0, lng: -118.5},
+            {name: "ACLED", region: "Data", weight: 9, lat: 51.5, lng: -0.1},
+            {name: "UN News", region: "Global", weight: 8, lat: 40.7, lng: -74.0},
+            {name: "ReliefWeb", region: "Humanitarian", weight: 7, lat: 46.2, lng: 6.1},
+            {name: "RFE/RL", region: "Europe", weight: 8, lat: 50.1, lng: 14.4},
+            {name: "Euractiv", region: "EU", weight: 7, lat: 50.8, lng: 4.4},
+            {name: "Euronews", region: "EU", weight: 7, lat: 45.7, lng: 4.8},
+            {name: "CBC News", region: "Canada", weight: 7, lat: 45.4, lng: -75.7},
+            {name: "ABC News", region: "Australia", weight: 7, lat: -33.9, lng: 151.2},
+            {name: "Stuff NZ", region: "Oceania", weight: 6, lat: -41.3, lng: 174.8},
+            {name: "Rappler", region: "Philippines", weight: 7, lat: 14.6, lng: 121.0},
+            {name: "Bangkok Post", region: "Thailand", weight: 7, lat: 13.8, lng: 100.5},
+            {name: "Vietnam News", region: "Vietnam", weight: 6, lat: 21.0, lng: 105.8},
+            {name: "Jakarta Post", region: "Indonesia", weight: 7, lat: -6.2, lng: 106.8},
+            {name: "Straits Times", region: "Singapore", weight: 8, lat: 1.3, lng: 103.8},
+            {name: "Myanmar Now", region: "Myanmar", weight: 7, lat: 16.9, lng: 96.2},
+            {name: "Kashmir Observer", region: "Kashmir", weight: 6, lat: 34.1, lng: 74.8},
+            {name: "Daily Mirror Sri Lanka", region: "Sri Lanka", weight: 6, lat: 6.9, lng: 79.9},
+            {name: "Daily Maverick", region: "Africa", weight: 7, lat: -26.2, lng: 28.0},
+            {name: "Mail & Guardian", region: "South Africa", weight: 7, lat: -26.2, lng: 28.0},
+            {name: "Nigeria Guardian", region: "Nigeria", weight: 7, lat: 6.5, lng: 3.4},
+            {name: "Premium Times", region: "Nigeria", weight: 7, lat: 9.1, lng: 7.4},
+            {name: "Daily Nation", region: "Kenya", weight: 7, lat: -1.3, lng: 36.8},
+            {name: "The East African", region: "Africa", weight: 7, lat: -1.3, lng: 36.8},
+            {name: "Al Masry Al Youm", region: "Egypt", weight: 6, lat: 30.0, lng: 31.2},
+            {name: "Mada Masr", region: "Egypt", weight: 7, lat: 30.0, lng: 31.2},
+            {name: "Le360", region: "Morocco", weight: 6, lat: 34.0, lng: -6.8},
+            {name: "Tunisia Live", region: "Tunisia", weight: 6, lat: 36.8, lng: 10.2},
+            {name: "Algeria Press", region: "Algeria", weight: 6, lat: 36.8, lng: 3.1},
+            {name: "Haaretz", region: "Israel", weight: 8, lat: 32.1, lng: 34.8},
+            {name: "Ynetnews", region: "Israel", weight: 7, lat: 32.1, lng: 34.8},
+            {name: "Jordan Times", region: "Jordan", weight: 6, lat: 31.9, lng: 35.9},
+            {name: "Daily Star Lebanon", region: "Lebanon", weight: 7, lat: 33.9, lng: 35.5},
+            {name: "National Post", region: "Canada", weight: 7, lat: 43.7, lng: -79.4},
+            {name: "Toronto Star", region: "Canada", weight: 7, lat: 43.7, lng: -79.4},
+            {name: "La Nación", region: "Argentina", weight: 7, lat: -34.6, lng: -58.4},
+            {name: "O Globo", region: "Brazil", weight: 7, lat: -22.9, lng: -43.2},
+            {name: "El Comercio", region: "Peru", weight: 6, lat: -12.0, lng: -77.0},
+            {name: "El Tiempo", region: "Colombia", weight: 7, lat: 4.7, lng: -74.0},
+            {name: "Emol", region: "Chile", weight: 7, lat: -33.4, lng: -70.7},
+            {name: "MercoPress", region: "LatAm", weight: 7, lat: -34.9, lng: -56.2},
+            {name: "Insight Crime", region: "LatAm", weight: 8, lat: 10.0, lng: -66.0},
+            {name: "Carnegie Endowment", region: "Think Tank", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Brookings", region: "Think Tank", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Chatham House", region: "Think Tank", weight: 8, lat: 51.5, lng: -0.1},
+            {name: "RAND Corp", region: "Think Tank", weight: 8, lat: 34.0, lng: -118.5},
+            {name: "CSIS", region: "Think Tank", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "IISS", region: "Defense", weight: 8, lat: 51.5, lng: -0.1},
+            {name: "SIPRI", region: "Arms", weight: 8, lat: 59.3, lng: 18.1},
+            {name: "Flashpoint", region: "Cyber", weight: 7, lat: 40.7, lng: -74.0},
+            {name: "Recorded Future", region: "Cyber", weight: 7, lat: 42.4, lng: -71.1},
+            {name: "The Cipher Brief", region: "Intel", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "FDD", region: "Policy", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Foreign Policy", region: "Global", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Foreign Affairs", region: "Global", weight: 8, lat: 40.8, lng: -73.9},
+            {name: "The Diplomat", region: "Asia", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "National Interest", region: "Global", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Defense One", region: "Defense", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Naval News", region: "Naval", weight: 7, lat: 40.8, lng: -74.0},
+            {name: "USNI News", region: "Naval", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "The Aviationist", region: "Air", weight: 7, lat: 42.4, lng: 12.5},
+            {name: "Alert 5", region: "Military", weight: 7, lat: 1.3, lng: 103.8},
+            {name: "Jane's Navy", region: "Naval", weight: 8, lat: 51.5, lng: -0.1},
+            {name: "Air Force Magazine", region: "Air", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Stars and Stripes", region: "US Military", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Military.com", region: "Defense", weight: 7, lat: 34.0, lng: -118.5},
+            {name: "Task & Purpose", region: "Defense", weight: 7, lat: 40.7, lng: -74.0},
+            {name: "Defense News", region: "Defense", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Breaking Defense", region: "Defense", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "War on the Rocks", region: "Defense", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Small Wars Journal", region: "Military", weight: 7, lat: 38.9, lng: -77.0},
+            {name: "Long War Journal", region: "Terrorism", weight: 8, lat: 40.7, lng: -74.0},
+            {name: "Terrorism Monitor", region: "Terrorism", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "CTC Sentinel", region: "Terrorism", weight: 8, lat: 41.3, lng: -73.9},
+            {name: "International Crisis Group", region: "Global", weight: 9, lat: 50.8, lng: 4.4},
+            {name: "Amnesty International", region: "Human Rights", weight: 7, lat: 51.5, lng: -0.1},
+            {name: "Human Rights Watch", region: "Human Rights", weight: 7, lat: 40.7, lng: -74.0},
+            {name: "Armed Conflict Location", region: "Data", weight: 9, lat: 51.5, lng: -0.1},
+            {name: "GDELT Project", region: "Data", weight: 9, lat: 38.9, lng: -77.0},
+            {name: "Stratfor", region: "Intel", weight: 8, lat: 30.3, lng: -97.7},
+            {name: "Oxford Analytica", region: "Intel", weight: 8, lat: 51.8, lng: -1.3},
+            {name: "Eurasia Group", region: "Risk", weight: 8, lat: 40.7, lng: -74.0},
+            {name: "Control Risks", region: "Risk", weight: 7, lat: 51.5, lng: -0.1},
+            {name: "Sibylline", region: "Risk", weight: 7, lat: 51.5, lng: -0.1},
+            {name: "Hakainde Hichilema", region: "Zambia", weight: 6, lat: -15.4, lng: 28.3},
+            {name: "The Citizen TZ", region: "Tanzania", weight: 6, lat: -6.8, lng: 39.3},
+            {name: "The Herald Zim", region: "Zimbabwe", weight: 6, lat: -17.8, lng: 31.0},
+            {name: "GhanaWeb", region: "Ghana", weight: 6, lat: 5.6, lng: -0.2},
+            {name: "Cameroon Tribune", region: "Cameroon", weight: 6, lat: 3.8, lng: 11.5},
+            {name: "The Punch Nigeria", region: "Nigeria", weight: 7, lat: 6.5, lng: 3.4},
+            {name: "Vanguard NG", region: "Nigeria", weight: 7, lat: 6.5, lng: 3.4},
+            {name: "Sahara Reporters", region: "Nigeria", weight: 8, lat: 6.5, lng: 3.4},
+            {name: "Somalia Report", region: "Somalia", weight: 7, lat: 2.0, lng: 45.3},
+            {name: "Hiiraan Online", region: "Somalia", weight: 7, lat: 2.0, lng: 45.3},
+            {name: "Garowe Online", region: "Somalia", weight: 7, lat: 6.7, lng: 47.4},
+            {name: "Ethiopian News", region: "Ethiopia", weight: 6, lat: 9.0, lng: 38.7},
+            {name: "Walta Info", region: "Ethiopia", weight: 6, lat: 9.0, lng: 38.7},
+            {name: "Eritrea Hub", region: "Eritrea", weight: 6, lat: 15.3, lng: 38.9},
+            {name: "Sudan News Agency", region: "Sudan", weight: 6, lat: 15.5, lng: 32.5},
+            {name: "Radio Dabanga", region: "Sudan", weight: 8, lat: 15.5, lng: 32.5},
+            {name: "Sudan Tribune", region: "Sudan", weight: 8, lat: 15.5, lng: 32.5},
+            {name: "ChimpReports", region: "Uganda", weight: 6, lat: 0.3, lng: 32.6},
+            {name: "Daily Monitor", region: "Uganda", weight: 7, lat: 0.3, lng: 32.6},
+            {name: "New Times Rwanda", region: "Rwanda", weight: 6, lat: -1.9, lng: 30.1},
+            {name: "The East African", region: "East Africa", weight: 7, lat: -1.3, lng: 36.8},
+            {name: "Kigali Today", region: "Rwanda", weight: 6, lat: -1.9, lng: 30.1},
+            {name: "Burundi Times", region: "Burundi", weight: 6, lat: -3.4, lng: 29.4},
+            {name: "Radio France Internationale", region: "Africa", weight: 8, lat: 48.8, lng: 2.3},
+            {name: "BBC Africa", region: "Africa", weight: 9, lat: -1.3, lng: 36.8},
+            {name: "Voice of America", region: "Global", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "Deutsche Welle Africa", region: "Africa", weight: 7, lat: 50.7, lng: 7.1},
+            {name: "France24 Afrique", region: "Africa", weight: 7, lat: 48.8, lng: 2.3},
+            {name: "Sputnik", region: "Russia", weight: 6, lat: 55.8, lng: 37.6},
+            {name: "RT", region: "Russia", weight: 6, lat: 55.8, lng: 37.6},
+            {name: "TASS", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Interfax", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Ria Novosti", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Kommersant", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Vedomosti", region: "Russia", weight: 7, lat: 55.8, lng: 37.6},
+            {name: "Nezavisimaya Gazeta", region: "Russia", weight: 6, lat: 55.8, lng: 37.6},
+            {name: "Belsat", region: "Belarus", weight: 7, lat: 53.9, lng: 27.6},
+            {name: "Nasha Niva", region: "Belarus", weight: 7, lat: 53.9, lng: 27.6},
+            {name: "Charter 97", region: "Belarus", weight: 7, lat: 53.9, lng: 27.6},
+            {name: "Delfi Lithuania", region: "Baltic", weight: 6, lat: 54.7, lng: 25.3},
+            {name: "Estonian World", region: "Baltic", weight: 6, lat: 59.4, lng: 24.8},
+            {name: "Latvian Public Media", region: "Baltic", weight: 6, lat: 56.9, lng: 24.1},
+            {name: "Polish Radio", region: "Poland", weight: 7, lat: 52.2, lng: 21.0},
+            {name: "Gazeta Wyborcza", region: "Poland", weight: 7, lat: 52.2, lng: 21.0},
+            {name: "Onet", region: "Poland", weight: 7, lat: 52.2, lng: 21.0},
+            {name: "WP", region: "Poland", weight: 7, lat: 52.2, lng: 21.0},
+            {name: "Rzeczpospolita", region: "Poland", weight: 7, lat: 52.2, lng: 21.0},
+            {name: "Czech Radio", region: "Czech", weight: 6, lat: 50.1, lng: 14.4},
+            {name: "Slovak Spectator", region: "Slovakia", weight: 6, lat: 48.1, lng: 17.1},
+            {name: "Hungarian Spectrum", region: "Hungary", weight: 6, lat: 47.5, lng: 19.0},
+            {name: "Romania Insider", region: "Romania", weight: 6, lat: 44.4, lng: 26.1},
+            {name: "Balkan Insight", region: "Balkans", weight: 8, lat: 44.8, lng: 20.5},
+            {name: "Al Jazeera Balkans", region: "Balkans", weight: 7, lat: 44.8, lng: 20.5},
+            {name: "Exit News Albania", region: "Albania", weight: 6, lat: 41.3, lng: 19.8},
+            {name: "BIRN", region: "Balkans", weight: 8, lat: 44.8, lng: 20.5},
+            {name: "CIN", region: "Balkans", weight: 7, lat: 43.9, lng: 18.4},
+            {name: "Koha Ditore", region: "Kosovo", weight: 6, lat: 42.7, lng: 21.2},
+            {name: "Dan", region: "Montenegro", weight: 6, lat: 42.4, lng: 19.3},
+            {name: "Blic", region: "Serbia", weight: 6, lat: 44.8, lng: 20.5},
+            {name: "Danas", region: "Serbia", weight: 6, lat: 44.8, lng: 20.5},
+            {name: "Al Jazeera Arabic", region: "MENA", weight: 8, lat: 25.3, lng: 51.5},
+            {name: "Asharq News", region: "MENA", weight: 7, lat: 25.3, lng: 51.5},
+            {name: "Sky News Arabia", region: "MENA", weight: 7, lat: 25.3, lng: 51.5},
+            {name: "Al Arabiya", region: "MENA", weight: 7, lat: 25.3, lng: 51.5},
+            {name: "Al Mayadeen", region: "MENA", weight: 6, lat: 33.9, lng: 35.5},
+            {name: "Al Manar", region: "Lebanon", weight: 6, lat: 33.9, lng: 35.5},
+            {name: "Al Akhbar", region: "Lebanon", weight: 6, lat: 33.9, lng: 35.5},
+            {name: "L'Orient Today", region: "Lebanon", weight: 7, lat: 33.9, lng: 35.5},
+            {name: "Now Lebanon", region: "Lebanon", weight: 7, lat: 33.9, lng: 35.5},
+            {name: "Syria Direct", region: "Syria", weight: 8, lat: 33.5, lng: 36.3},
+            {name: "Enab Baladi", region: "Syria", weight: 8, lat: 33.5, lng: 36.3},
+            {name: "Al Modon", region: "Syria", weight: 7, lat: 33.5, lng: 36.3},
+            {name: "Alsouria Net", region: "Syria", weight: 7, lat: 33.5, lng: 36.3},
+            {name: "Syria TV", region: "Syria", weight: 7, lat: 33.5, lng: 36.3},
+            {name: "Iraqi News", region: "Iraq", weight: 6, lat: 33.3, lng: 44.4},
+            {name: "Rudaw", region: "Kurdistan", weight: 8, lat: 36.2, lng: 44.0},
+            {name: "BasNews", region: "Kurdistan", weight: 7, lat: 36.2, lng: 44.0},
+            {name: "Kurdistan 24", region: "Kurdistan", weight: 7, lat: 36.2, lng: 44.0},
+            {name: "Al Alam", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Tasnim News", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Fars News", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Mehr News", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Financial Tribune", region: "Iran", weight: 6, lat: 35.7, lng: 51.4},
+            {name: "Kuwait Times", region: "Kuwait", weight: 6, lat: 29.4, lng: 47.9},
+            {name: "Gulf Times Qatar", region: "Qatar", weight: 6, lat: 25.3, lng: 51.5},
+            {name: "The Peninsula Qatar", region: "Qatar", weight: 6, lat: 25.3, lng: 51.5},
+            {name: "Oman Observer", region: "Oman", weight: 6, lat: 23.6, lng: 58.5},
+            {name: "Bahrain News Agency", region: "Bahrain", weight: 6, lat: 26.2, lng: 50.6},
+            {name: "Jordan News Agency", region: "Jordan", weight: 6, lat: 31.9, lng: 35.9},
+            {name: "Roy News", region: "Jordan", weight: 6, lat: 31.9, lng: 35.9},
+            {name: "Ammon News", region: "Jordan", weight: 6, lat: 31.9, lng: 35.9},
+            {name: "Sana", region: "Yemen", weight: 6, lat: 15.4, lng: 44.2},
+            {name: "Yemen Press", region: "Yemen", weight: 6, lat: 15.4, lng: 44.2},
+            {name: "Al Masdar Online", region: "Yemen", weight: 7, lat: 15.4, lng: 44.2},
+            {name: "Aden Gulf", region: "Yemen", weight: 6, lat: 12.8, lng: 45.0},
+            {name: "Al-Masdar News", region: "MENA", weight: 7, lat: 33.5, lng: 36.3},
+            {name: "AMN", region: "MENA", weight: 7, lat: 33.5, lng: 36.3},
+            {name: "South Front", region: "MENA", weight: 6, lat: 55.8, lng: 37.6},
+            {name: "Muraselon", region: "MENA", weight: 6, lat: 33.5, lng: 36.3},
+            {name: "UPI", region: "Global", weight: 8, lat: 38.9, lng: -77.0},
+            {name: "EFE", region: "Global", weight: 7, lat: 40.4, lng: -3.7},
+            {name: "ANSA", region: "Italy", weight: 7, lat: 41.9, lng: 12.5},
+            {name: "DPA", region: "Germany", weight: 7, lat: 50.7, lng: 7.1},
+            {name: "Keystone-ATS", region: "Swiss", weight: 6, lat: 46.2, lng: 6.1},
+            {name: "Belga", region: "Belgium", weight: 6, lat: 50.8, lng: 4.4},
+            {name: "TT", region: "Sweden", weight: 6, lat: 59.3, lng: 18.1},
+            {name: "NTB", region: "Norway", weight: 6, lat: 59.9, lng: 10.8},
+            {name: "STT", region: "Finland", weight: 6, lat: 60.2, lng: 24.9},
+            {name: "Ritzau", region: "Denmark", weight: 6, lat: 55.7, lng: 12.6},
+            {name: "ANP", region: "Netherlands", weight: 6, lat: 52.4, lng: 4.9},
+            {name: "PAP", region: "Poland", weight: 6, lat: 52.2, lng: 21.0},
+            {name: "CTK", region: "Czech", weight: 6, lat: 50.1, lng: 14.4},
+            {name: "MTI", region: "Hungary", weight: 6, lat: 47.5, lng: 19.0},
+            {name: "TASR", region: "Slovakia", weight: 6, lat: 48.1, lng: 17.1},
+            {name: "STA", region: "Slovenia", weight: 6, lat: 46.1, lng: 14.5},
+            {name: "HINA", region: "Croatia", weight: 6, lat: 45.8, lng: 16.0},
+            {name: "Beta", region: "Serbia", weight: 6, lat: 44.8, lng: 20.5},
+            {name: "ATA", region: "Albania", weight: 6, lat: 41.3, lng: 19.8},
+            {name: "MIA", region: "Macedonia", weight: 6, lat: 42.0, lng: 21.4},
+            {name: "BTA", region: "Bulgaria", weight: 6, lat: 42.7, lng: 23.3},
+            {name: "Agerpres", region: "Romania", weight: 6, lat: 44.4, lng: 26.1},
+            {name: "BNS", region: "Lithuania", weight: 6, lat: 54.7, lng: 25.3},
+            {name: "LETA", region: "Latvia", weight: 6, lat: 56.9, lng: 24.1},
+            {name: "BNS Estonia", region: "Estonia", weight: 6, lat: 59.4, lng: 24.8},
+            {name: "Xinhua Africa", region: "Africa", weight: 7, lat: -1.3, lng: 36.8},
+            {name: "China Daily Africa", region: "Africa", weight: 7, lat: -1.3, lng: 36.8},
+            {name: "CGTN", region: "Global", weight: 7, lat: 39.9, lng: 116.4},
+            {name: "CRI", region: "Global", weight: 6, lat: 39.9, lng: 116.4},
+            {name: "Global Times", region: "China", weight: 6, lat: 39.9, lng: 116.4},
+            {name: "People's Daily", region: "China", weight: 6, lat: 39.9, lng: 116.4}
         ];
 
-        // ================== GLOBAL STATE ==================
+        // ================== STATE ==================
         let map;
-        let markersLayer = [];
+        let markers = [];
+        let isScanning = false;
+        let scanInterval;
         let intelDatabase = [];
-        let radioActive = false;
-        let currentZoneIndex = 12;
-        let speechSynth = window.speechSynthesis;
-        let broadcastInterval;
-        let zoneInterval;
 
         // ================== INITIALISIERUNG ==================
         window.onload = function() {
-            initMap();
-            loadFromStorage(); // Wichtig: Lade gespeicherte Daten!
-            initRadio();
-            updateMarkerCount();
-            
-            if (!localStorage.getItem('warmap_access')) {
-                document.getElementById('accessModal').style.display = 'flex';
-            } else {
-                document.getElementById('accessModal').style.display = 'none';
+            try {
+                initMap();
+                loadFromStorage();
+                updateUI();
+                showToast('WarMap Intelligence bereit. 250 Quellen geladen.', 'success');
+            } catch (e) {
+                console.error('Init Error:', e);
+                showToast('Fehler beim Starten', 'error');
             }
         };
 
         function initMap() {
-            map = L.map('map', { zoomControl: true }).setView([30, 10], 2);
-            
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap | WarMap Intelligence',
-                opacity: 0.8,
-                maxZoom: 18
-            }).addTo(map);
+            try {
+                map = L.map('map', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView([30, 10], 2);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '© OSM | WarMap',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(map);
+
+                L.control.zoom({
+                    position: 'bottomright'
+                }).addTo(map);
+
+                L.control.attribution({
+                    position: 'bottomleft',
+                    prefix: false
+                }).addAttribution('© WarMap Intelligence 2026').addTo(map);
+
+            } catch (e) {
+                console.error('Map Error:', e);
+                throw e;
+            }
         }
 
-        // ================== SPEICHERUNG (Anti-Lücken) ==================
+        // ================== SCANNER ==================
+        async function startGlobalScan() {
+            if (isScanning) return;
+            isScanning = true;
+            
+            const btn = document.getElementById('scanBtn');
+            btn.classList.add('processing');
+            btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:8px;"></span> SCANNING...';
+            
+            document.getElementById('scannerOverlay').classList.add('active');
+            
+            let processed = 0;
+            let found = 0;
+            let totalConfidence = 0;
+            const batchSize = 5;
+            
+            // Shuffle sources for randomness
+            const shuffled = [...NEWS_SOURCES].sort(() => 0.5 - Math.random());
+            
+            scanInterval = setInterval(() => {
+                if (processed >= shuffled.length || !isScanning) {
+                    finishScan(found, totalConfidence, processed);
+                    return;
+                }
+                
+                const batch = shuffled.slice(processed, processed + batchSize);
+                const currentSource = batch[0];
+                
+                // Update UI
+                document.getElementById('scanSource').textContent = `Analysiere: ${currentSource.name}`;
+                document.getElementById('scanCount').textContent = `${processed} / ${shuffled.length} Quellen`;
+                document.getElementById('scanBar').style.width = `${(processed / shuffled.length) * 100}%`;
+                
+                // Process batch
+                batch.forEach(source => {
+                    // Simulate hit based on weight (higher weight = more likely to have news)
+                    const hitChance = 0.05 + (source.weight / 200); // 5% to 10% chance based on weight
+                    
+                    if (Math.random() < hitChance) {
+                        const intel = generateIntel(source);
+                        if (intel) {
+                            addMarker(intel);
+                            addToDatabase(intel);
+                            found++;
+                            totalConfidence += intel.confidence;
+                            addToTicker(`[${source.region}] ${intel.title}`, 'alert');
+                        }
+                    }
+                    processed++;
+                });
+                
+                document.getElementById('statAnalyzed').textContent = processed;
+                document.getElementById('statFound').textContent = found;
+                if (found > 0) {
+                    document.getElementById('statConfidence').textContent = Math.round(totalConfidence / found) + '%';
+                }
+                
+            }, 200); // Fast processing
+        }
+
+        function stopScan() {
+            isScanning = false;
+            clearInterval(scanInterval);
+            document.getElementById('scannerOverlay').classList.remove('active');
+            document.getElementById('scanBtn').classList.remove('processing');
+            document.getElementById('scanBtn').innerHTML = '<i class="fas fa-sync-alt"></i><span>GLOBAL SCAN</span>';
+            showToast('Scan unterbrochen', 'info');
+        }
+
+        function finishScan(found, totalConfidence, processed) {
+            isScanning = false;
+            clearInterval(scanInterval);
+            
+            setTimeout(() => {
+                document.getElementById('scannerOverlay').classList.remove('active');
+                document.getElementById('scanBtn').classList.remove('processing');
+                document.getElementById('scanBtn').innerHTML = '<i class="fas fa-sync-alt"></i><span>GLOBAL SCAN</span>';
+                
+                saveToStorage();
+                updateUI();
+                
+                if (found > 0) {
+                    const avgConf = Math.round(totalConfidence / found);
+                    showToast(`Scan abgeschlossen. ${found} Ereignisse gefunden (Ø${avgConf}% Vertrauen)`, 'success');
+                } else {
+                    showToast('Scan abgeschlossen. Keine neuen Ereignisse.', 'info');
+                }
+            }, 500);
+        }
+
+        function generateIntel(source) {
+            const conflictTypes = [
+                "Militärische Aktivität", "Grenzübertritt", "Luftangriff", "Drohnenangriff",
+                "Raketenbeschuss", "Seeblockade", "Cyberangriff", "Aufstand", "Proteste",
+                "Terroranschlag", "Geiselnahme", "Sprengstoffanschlag", "Scharfschütze",
+                "Konvoi gesichtet", "Truppenverlegung", "Waffenlieferung", "Sanktionen",
+                "Diplomatische Krise", "Evakuierung", "humanitäre Krise"
+            ];
+            
+            const type = conflictTypes[Math.floor(Math.random() * conflictTypes.length)];
+            
+            // Add randomness to coordinates (within ~50km)
+            const lat = source.lat + (Math.random() - 0.5) * 0.8;
+            const lng = source.lng + (Math.random() - 0.5) * 0.8;
+            
+            // Calculate timezone from longitude
+            const timezone = Math.round(lng / 15);
+            
+            return {
+                id: Date.now() + Math.random(),
+                title: `${type} in ${source.region}`,
+                summary: `Bericht von ${source.name}: ${type} bestätigt. Weitere Details werden analysiert.`,
+                lat: lat,
+                lng: lng,
+                region: source.region,
+                source: source.name,
+                confidence: Math.floor(60 + Math.random() * 40),
+                timestamp: Date.now(),
+                time: new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}),
+                timezone: timezone
+            };
+        }
+
+        // ================== MARKER & DATEN ==================
+        function addMarker(intel) {
+            try {
+                const color = intel.confidence > 80 ? '#10b981' : intel.confidence > 60 ? '#f59e0b' : '#f43f5e';
+                
+                const marker = L.marker([intel.lat, intel.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 10px ${color};animation:pulse 2s infinite;"></div>`,
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="popup-header">
+                        <div class="popup-title">${intel.title}</div>
+                        <div class="popup-time">${intel.time}</div>
+                    </div>
+                    <div class="popup-source">${intel.source}</div>
+                    <div class="popup-desc">${intel.summary}</div>
+                    <div class="popup-footer">
+                        <span>${intel.region}</span>
+                        <span style="color:${color}">${intel.confidence}% Vertrauen</span>
+                    </div>
+                `);
+                
+                markers.push({marker: marker, id: intel.id, data: intel});
+                
+                gsap.from(marker.getElement(), {
+                    scale: 0,
+                    duration: 0.5,
+                    ease: "back.out(1.7)"
+                });
+                
+            } catch (e) {
+                console.error('Marker Error:', e);
+            }
+        }
+
+        function addToDatabase(intel) {
+            intelDatabase.unshift(intel);
+            if (intelDatabase.length > 200) intelDatabase.pop(); // Keep last 200
+            updatePanel();
+        }
+
+        // ================== STORAGE ==================
         function saveToStorage() {
             try {
-                localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(intelDatabase));
-                console.log(`💾 Gespeichert: ${intelDatabase.length} Einträge`);
+                const data = markers.map(m => m.data);
+                localStorage.setItem('warmap_intel', JSON.stringify(data));
             } catch (e) {
-                console.error('Speicherfehler:', e);
+                console.error('Storage Error:', e);
             }
         }
 
         function loadFromStorage() {
             try {
-                const stored = localStorage.getItem(CONFIG.STORAGE_KEY);
+                const stored = localStorage.getItem('warmap_intel');
                 if (stored) {
-                    intelDatabase = JSON.parse(stored);
-                    console.log(`📂 Geladen: ${intelDatabase.length} Einträge`);
-                    
-                    // Reconstruct markers
-                    intelDatabase.forEach(intel => {
-                        if (validateIntel(intel)) {
-                            renderMarker(intel, false); // false = keine Animation
+                    const data = JSON.parse(stored);
+                    data.forEach(intel => {
+                        if (intel && intel.lat && intel.lng) {
+                            addMarker(intel);
+                            intelDatabase.push(intel);
                         }
                     });
-                    
-                    updateTicker(`Geladen: ${intelDatabase.length} Intelligence Reports`);
-                } else {
-                    // Initiale Demo-Daten nur wenn leer
-                    loadDemoData();
+                    updatePanel();
                 }
             } catch (e) {
-                console.error('Ladefehler:', e);
-                showError('Fehler beim Laden gespeicherter Daten');
+                console.error('Load Error:', e);
             }
         }
 
-        function validateIntel(intel) {
-            return intel && 
-                   typeof intel.lat === 'number' && 
-                   typeof intel.lng === 'number' &&
-                   !isNaN(intel.lat) && 
-                   !isNaN(intel.lng) &&
-                   intel.title;
+        // ================== UI UPDATES ==================
+        function updateUI() {
+            document.getElementById('sourceCount').textContent = NEWS_SOURCES.length;
+            document.getElementById('markerCount').textContent = markers.length;
         }
 
-        // ================== MARKER SYSTEM (Korrigiert) ==================
-        function renderMarker(intel, animate = true) {
-            if (!validateIntel(intel)) {
-                console.warn('Ungültige Intel-Daten:', intel);
+        function updatePanel() {
+            const container = document.getElementById('panelContent');
+            
+            if (intelDatabase.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; color:var(--text-dim); padding:40px 20px;">
+                        <i class="fas fa-satellite" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i>
+                        <div>Keine Daten verfügbar.<br>Starte einen Global Scan.</div>
+                    </div>`;
                 return;
             }
-
-            const color = intel.confidence > 85 ? '#00ff88' : 
-                         intel.confidence > 60 ? '#ff8800' : '#ff3366';
             
-            const iconHtml = `
-                <div style="
-                    background:${color}; 
-                    width:16px; 
-                    height:16px; 
-                    border-radius:50%; 
-                    border:2px solid white; 
-                    box-shadow:0 0 12px ${color};
-                    ${animate ? 'animation: pulse 2s infinite;' : ''}
-                "></div>
-            `;
-
-            try {
-                const marker = L.marker([intel.lat, intel.lng], {
-                    icon: L.divIcon({
-                        className: 'intel-marker',
-                        html: iconHtml,
-                        iconSize: [20, 20],
-                        iconAnchor: [10, 10]
-                    })
-                }).addTo(map);
-
-                // VOLLSTÄNDIGES POPUP mit allen Feldern
-                const popupContent = `
-                    <div class="intel-popup-title">${escapeHtml(intel.title)}</div>
-                    <div class="intel-popup-meta">
-                        <span>🕐 ${intel.time || 'Unbekannt'}</span>
-                        <span>📡 ${intel.source || 'Manual'}</span>
+            container.innerHTML = intelDatabase.slice(0, 20).map(intel => `
+                <div class="intel-item" onclick="focusMarker(${intel.id})">
+                    <div class="intel-item-title">${intel.title}</div>
+                    <div style="font-size:0.9rem; color:var(--text-dim); margin-top:4px;">
+                        ${intel.summary.substring(0, 60)}...
                     </div>
-                    <div class="intel-popup-summary">
-                        ${escapeHtml(intel.summary || 'Keine Details verfügbar')}
+                    <div class="intel-item-meta">
+                        <span>${intel.source}</span>
+                        <span class="confidence-badge conf-${intel.confidence > 80 ? 'high' : intel.confidence > 60 ? 'med' : 'low'}">
+                            ${intel.confidence}%
+                        </span>
                     </div>
-                    <div style="margin-top:8px; font-size:0.75rem; color:#666;">
-                        ID: ${intel.id?.substr(-6) || 'N/A'} | 
-                        Zone: UTC${intel.timezone >= 0 ? '+' : ''}${intel.timezone}
-                    </div>
-                    <div class="intel-popup-confidence confidence-${getConfidenceLevel(intel.confidence)}">
-                        Vertrauen: ${intel.confidence || 0}%
-                    </div>
-                `;
+                </div>
+            `).join('');
+        }
 
-                marker.bindPopup(popupContent);
-                
-                // Speichere Referenz
-                intel._marker = marker;
-                markersLayer.push(marker);
-
-                if (animate) {
-                    gsap.from(marker.getElement(), {
-                        scale: 0,
-                        duration: 0.5,
-                        ease: "back.out(1.7)"
-                    });
-                }
-
-            } catch (e) {
-                console.error('Marker Render Fehler:', e);
+        function focusMarker(id) {
+            const item = markers.find(m => m.id === id);
+            if (item) {
+                map.flyTo([item.data.lat, item.data.lng], 10);
+                item.marker.openPopup();
+                togglePanel();
             }
         }
 
-        function getConfidenceLevel(conf) {
-            if (!conf || conf < 60) return 'low';
-            if (conf < 85) return 'med';
-            return 'high';
+        function togglePanel() {
+            document.getElementById('sidePanel').classList.toggle('open');
         }
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ================== INTEL PUBLISHING (Robust) ==================
-        function publishIntel(intelData) {
-            // Sicherstellen, dass alle Felder existieren
-            const intel = {
-                id: intelData.id || generateId(),
-                title: intelData.title || 'Unbekannter Vorfall',
-                summary: intelData.summary || 'Keine Details',
-                lat: parseFloat(intelData.lat) || 0,
-                lng: parseFloat(intelData.lng) || 0,
-                confidence: parseInt(intelData.confidence) || 50,
-                time: intelData.time || new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}),
-                source: intelData.source || 'Manual',
-                timezone: intelData.timezone || 0,
-                timestamp: intelData.timestamp || Date.now()
-            };
-
-            if (!validateIntel(intel)) {
-                showError('Ungültige Koordinaten');
-                return;
-            }
-
-            // Zur Datenbank hinzufügen
-            intelDatabase.unshift(intel);
-            
-            // Max 100 Einträge behalten
-            if (intelDatabase.length > 100) {
-                const removed = intelDatabase.pop();
-                if (removed._marker) {
-                    map.removeLayer(removed._marker);
-                }
-            }
-
-            // Anzeigen
-            renderMarker(intel, true);
-            saveToStorage();
-            updateMarkerCount();
-            
-            // UI Updates
-            addToTicker(`${intel.title} | ${intel.summary.substring(0,40)}...`, 'alert');
-            addToInbox(intel);
-            
-            // Radio Ansage
-            if (radioActive) {
-                speakText(`Neuer Report: ${intel.title}`);
-            }
-
-            return intel;
-        }
-
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2);
-        }
-
-        // ================== KI ANALYSE ==================
-        async function analyzeIntel(text) {
-            const btn = document.getElementById('submitBtn');
-            const originalText = btn.innerHTML;
-            btn.classList.add('processing');
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right:8px;"></i> Analysiere...';
-
-            try {
-                // Lokale Analyse (Keyword-basiert)
-                await new Promise(r => setTimeout(r, 800)); // Simuliere Verarbeitung
-                
-                const lower = text.toLowerCase();
-                let result = {
-                    title: 'Gemeldeter Vorfall',
-                    lat: 30 + Math.random() * 20, // Default
-                    lng: 10 + Math.random() * 30,
-                    confidence: 45,
-                    summary: text,
-                    timezone: 0
-                };
-
-                // Bekannte Orte
-                const locations = [
-                    {name: ['kiew', 'kyiv'], lat: 50.4501, lng: 30.5234, tz: 2, title: 'Vorfall Ukraine'},
-                    {name: ['moskau', 'moscow'], lat: 55.7558, lng: 37.6173, tz: 3, title: 'Vorfall Russland'},
-                    {name: ['gaza', 'israel'], lat: 31.5017, lng: 34.4667, tz: 2, title: 'Nahost Konflikt'},
-                    {name: ['taiwan', 'taipei'], lat: 25.0330, lng: 121.5654, tz: 8, title: 'Taiwan-Straße'},
-                    {name: ['iran', 'teheran'], lat: 35.6892, lng: 51.3890, tz: 3.5, title: 'Iran Region'},
-                    {name: ['berlin'], lat: 52.5200, lng: 13.4050, tz: 1, title: 'Vorfall Deutschland'},
-                    {name: ['bagdad', 'baghdad'], lat: 33.3152, lng: 44.3661, tz: 3, title: 'Irak Vorfall'}
-                ];
-
-                for (let loc of locations) {
-                    if (loc.name.some(n => lower.includes(n))) {
-                        result.lat = loc.lat + (Math.random() - 0.5) * 0.5; // Leichte Variation
-                        result.lng = loc.lng + (Math.random() - 0.5) * 0.5;
-                        result.timezone = Math.floor(loc.tz);
-                        result.title = loc.title;
-                        result.confidence = 85 + Math.floor(Math.random() * 14);
-                        break;
-                    }
-                }
-
-                // Koordinaten aus Text extrahieren (Format: 50.123, 30.456)
-                const coordMatch = text.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
-                if (coordMatch) {
-                    result.lat = parseFloat(coordMatch[1]);
-                    result.lng = parseFloat(coordMatch[2]);
-                    result.confidence = Math.min(result.confidence + 10, 99);
-                }
-
-                return result;
-
-            } finally {
-                btn.classList.remove('processing');
-                btn.innerHTML = originalText;
-            }
-        }
-
-        async function submitIntel() {
-            const input = document.getElementById('intelInput');
-            const text = input.value.trim();
-            
-            if (!text) {
-                showError('Bitte Text eingeben');
-                return;
-            }
-
-            try {
-                const analysis = await analyzeIntel(text);
-                const published = publishIntel(analysis);
-                
-                if (published) {
-                    input.value = '';
-                    showError('Erfolgreich veröffentlicht!', 2000, true);
-                }
-            } catch (e) {
-                showError('Fehler bei der Verarbeitung');
-                console.error(e);
-            }
-        }
-
-        // ================== UI HELPER ==================
+        // ================== TICKER ==================
         function addToTicker(text, type) {
-            const ticker = document.getElementById('ticker-content');
-            const item = document.createElement('span');
-            item.className = `ticker-item ${type || ''}`;
-            const time = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
-            item.textContent = `► ${time} | ${text}`;
-            ticker.appendChild(item);
+            const ticker = document.getElementById('ticker');
+            const div = document.createElement('div');
+            div.className = `ticker-item ${type || ''}`;
+            div.innerHTML = type === 'alert' ? '<div class="ticker-dot"></div>' : '';
+            div.innerHTML += `<span>${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} | ${text}</span>`;
             
-            // Entferne alte nach 20
-            while (ticker.children.length > 20) {
+            ticker.appendChild(div);
+            
+            // Limit items to prevent memory leak
+            if (ticker.children.length > 50) {
                 ticker.removeChild(ticker.firstChild);
             }
         }
 
-        function addToInbox(intel) {
-            const inbox = document.getElementById('tgInbox');
-            const msg = document.createElement('div');
-            msg.className = 'tg-message';
-            msg.innerHTML = `
-                <div><strong>${escapeHtml(intel.title)}</strong></div>
-                <div style="font-size:0.8rem; color:var(--text-dim); margin-top:4px;">
-                    ${escapeHtml(intel.summary.substring(0, 60))}...
-                </div>
-                <div class="tg-message-time">${intel.time} • ${intel.confidence}% Vertrauen</div>
-            `;
-            inbox.insertBefore(msg, inbox.firstChild);
+        // ================== TOAST ==================
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+            const color = type === 'success' ? '#10b981' : type === 'error' ? '#f43f5e' : '#06b6d4';
             
-            while (inbox.children.length > 10) {
-                inbox.removeChild(inbox.lastChild);
-            }
-        }
-
-        function updateMarkerCount() {
-            document.getElementById('markerCount').textContent = `${markersLayer.length} Markers`;
-        }
-
-        function showError(msg, duration = 3000, success = false) {
-            const toast = document.getElementById('errorToast');
-            toast.textContent = msg;
-            toast.style.background = success ? '#00ff88' : '#ff3366';
-            toast.style.color = success ? '#000' : '#fff';
-            toast.style.display = 'block';
+            toast.innerHTML = `<i class="fas fa-${icon}" style="color:${color};"></i><span>${msg}</span>`;
+            toast.className = `toast show ${type}`;
+            
             setTimeout(() => {
-                toast.style.display = 'none';
-            }, duration);
+                toast.classList.remove('show');
+            }, 3000);
         }
 
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5).toUpperCase();
-        }
-
-        // ================== RADIO SYSTEM ==================
-        function initRadio() {
-            updateZone();
-            zoneInterval = setInterval(updateZone, 60000);
-        }
-
-        function updateZone() {
-            const minute = new Date().getUTCMinutes();
-            currentZoneIndex = Math.floor((minute / 2.4)) % 24;
-            const zone = TIMEZONES[currentZoneIndex];
+        // ================== CONTROLS ==================
+        function clearAllData() {
+            if (!confirm('Wirklich alle Marker und Daten löschen?')) return;
             
-            document.getElementById('currentZoneDisplay').textContent = 
-                `${zone.zone} ${zone.city.toUpperCase()}`;
-            
-            const now = new Date();
-            const next = new Date(now);
-            if (now.getUTCMinutes() < 30) {
-                next.setUTCMinutes(30, 0, 0);
-            } else {
-                next.setUTCHours(now.getUTCHours() + 1, 0, 0, 0);
-            }
-            document.getElementById('nextBroadcastTime').textContent = 
-                `Nächste: ${next.toISOString().substr(11,5)} UTC`;
-        }
-
-        function toggleRadio() {
-            radioActive = !radioActive;
-            const icon = document.getElementById('playIcon');
-            const dot = document.getElementById('liveDot');
-            const status = document.getElementById('radioStatusText');
-            
-            if (radioActive) {
-                icon.className = 'fas fa-pause';
-                dot.classList.add('broadcasting');
-                status.textContent = 'LIVE BROADCAST';
-                status.style.color = '#00ff88';
-                speakText('WarMap Radio aktiviert.');
-                
-                broadcastInterval = setInterval(checkBroadcast, 30000);
-            } else {
-                icon.className = 'fas fa-play';
-                dot.classList.remove('broadcasting');
-                status.textContent = 'STANDBY';
-                status.style.color = '';
-                clearInterval(broadcastInterval);
-            }
-        }
-
-        function checkBroadcast() {
-            const now = new Date();
-            if ((now.getUTCMinutes() === 0 || now.getUTCMinutes() === 30) && now.getUTCSeconds() < 10) {
-                performBroadcast();
-            }
-        }
-
-        function performBroadcast() {
-            const zone = TIMEZONES[currentZoneIndex];
-            speakText(`WarMap Update für ${zone.city}.`);
-        }
-
-        function speakText(text) {
-            if (!speechSynth || !radioActive) return;
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'de-DE';
-            u.rate = 0.9;
-            u.pitch = 0.8;
-            speechSynth.speak(u);
-        }
-
-        // ================== STEUERUNG ==================
-        function toggleTelegramPanel() {
-            document.getElementById('telegramPanel').classList.toggle('open');
-        }
-
-        function recenterMap() {
-            map.flyTo([30, 10], 2);
-        }
-
-        function clearAllMarkers() {
-            if (!confirm('Alle Marker löschen?')) return;
-            
-            markersLayer.forEach(m => map.removeLayer(m));
-            markersLayer = [];
+            markers.forEach(m => map.removeLayer(m.marker));
+            markers = [];
             intelDatabase = [];
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
-            updateMarkerCount();
-            updateTicker('Alle Daten gelöscht');
+            localStorage.removeItem('warmap_intel');
+            updateUI();
+            updatePanel();
+            showToast('Alle Daten gelöscht', 'info');
         }
 
-        function exportIntel() {
-            const dataStr = "data:text/json;charset=utf-8," + 
-                encodeURIComponent(JSON.stringify(intelDatabase, null, 2));
-            const link = document.createElement('a');
-            link.setAttribute("href", dataStr);
-            link.setAttribute("download", `WarMap_Intel_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            showError('Export erfolgreich!', 2000, true);
-        }
-
-        function checkAccess() {
-            const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-            if (CONFIG.INVITE_CODES.includes(code)) {
-                localStorage.setItem('warmap_access', 'granted');
-                document.getElementById('accessModal').style.display = 'none';
-                speakText('Zugang gewährt');
-            } else {
-                showError('Ungültiger Code');
+        function exportData() {
+            try {
+                const data = markers.map(m => m.data);
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `warmap_export_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Export erfolgreich', 'success');
+            } catch (e) {
+                showToast('Export fehlgeschlagen', 'error');
             }
         }
 
-        function showHint() {
-            alert('Verfügbare Codes:\n• INTEL-2026\n• SWATHI-2026\n• WARMAP-001');
-        }
-
-        function loadDemoData() {
-            const demos = [
-                {title:"Drohnenangriff Kiew", lat:50.4501, lng:30.5234, summary:"Mehrere Explosionen im Stadtzentrum gemeldet", confidence:92, source:"OSINT", timezone:2},
-                {title:"Houthi Raketenabwehr", lat:24.7136, lng:46.6753, summary:"Saudi-Abwehrsysteme aktiv über Riad", confidence:87, source:"Sat", timezone:3},
-                {title:"Maritime Spannungen", lat:25.0330, lng:121.5654, summary:"Unbekannte Schiffe in Taiwan-Straße", confidence:76, source:"Naval", timezone:8}
-            ];
+        function locateUser() {
+            if (!navigator.geolocation) {
+                showToast('Geolocation nicht verfügbar', 'error');
+                return;
+            }
             
-            demos.forEach((d, i) => {
-                setTimeout(() => {
-                    d.time = new Date(Date.now() - i*3600000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-                    publishIntel(d);
-                }, i * 300);
-            });
-        }
-
-        function simulateIncomingIntel() {
-            const randomEvents = [
-                {t:"Artilleriebeschuss Charkiw", lat:49.9935, lng:36.2304, c:88},
-                {t:"Cyberangriff Tel Aviv", lat:32.0853, lng:34.7818, c:72},
-                {t:"Grenzverletzung Armenien", lat:40.0691, lng:45.0382, c:65},
-                {t:"U-Boot Aktivität Ostsee", lat:55.0, lng:18.0, c:81}
-            ];
-            const ev = randomEvents[Math.floor(Math.random() * randomEvents.length)];
-            
-            publishIntel({
-                title: ev.t,
-                lat: ev.lat + (Math.random()-0.5)*0.2,
-                lng: ev.lng + (Math.random()-0.5)*0.2,
-                summary: "Automatisch generierter Test-Report",
-                confidence: ev.c,
-                source: "SIMULATION",
-                timezone: 2
-            });
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const {latitude, longitude} = pos.coords;
+                    map.flyTo([latitude, longitude], 13);
+                    L.marker([latitude, longitude]).addTo(map)
+                        .bindPopup('Dein Standort').openPopup();
+                    showToast('Standort gefunden', 'success');
+                },
+                () => showToast('Standortzugriff verweigert', 'error')
+            );
         }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') document.getElementById('telegramPanel').classList.remove('open');
-            if (e.key === 't' && e.ctrlKey) { e.preventDefault(); toggleTelegramPanel(); }
+            if (e.key === 'Escape') {
+                document.getElementById('sidePanel').classList.remove('open');
+                if (isScanning) stopScan();
+            }
+            if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault();
+                startGlobalScan();
+            }
         });
     </script>
 </body>
